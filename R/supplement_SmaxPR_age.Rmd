@@ -1,0 +1,200 @@
+---
+title: "Supplement 1 - calculating SmaxPR and SDs"
+author: "Dylan M. Glaser"
+date: '`r format(Sys.time(), "%d %B, %Y")`'
+knit: (function(inputFile, encoding) {
+  rmarkdown::render(inputFile, encoding = encoding, output_dir = "../output") })
+output: 
+  html_document:
+    smooth_scroll: yes
+    theme: journal
+    highlight: zenburn
+    toc: TRUE
+    toc_float: yes
+---
+
+```{r r_pkgs_setup, include = FALSE}
+library(tidyverse)
+library(here)
+library(DT)
+knitr::opts_chunk$set(echo = FALSE, 
+                      warning = FALSE, 
+                      message = FALSE)
+```
+
+# $S_{MAX_{PR}}$
+Here we estimate maximum spawners based on photosynthetic rates ($S_{MAX_{PR}}$) for 96 lakes without empirical estimates of mean daily photosynthetic rate ($PR_{MEAN}$) in [Atlas et al. 2020](https://aslopubs.onlinelibrary.wiley.com/doi/10.1002/lno.11448) (hereon the L&O paper). We use table S5 from the supplementary materials reported in the bottom of the previous link to calculate $S_{MAX_{PR}}$ estimates then aggregate them into sockeye populations (since a single population can use multiple lakes for rearing) to be re-analysed from a preprint (heron the [BioRxiv paper](https://www.biorxiv.org/content/10.1101/2021.03.22.436497v1)).  
+
+$S_{MAX_{PR}}$ estimates will ultimately be transformed and used as priors on the beta parameter in a Ricker stock-recruit model. We use empirical $S_{MAX_{PR}}$ estimates from table S1 from the L&O paper, then use modeled estimates of $S_{MAX_{PR}}$ calculated here as priors. We assign error around $S_{MAX_{PR}}$ based on lake clarity categories and $PR_{MEAN}$ estimates shown in figure 3a of the L&O paper.  
+
+In an ideal world, we'd have empirical estimates of $S_{MAX_{PR}}$ error that describe sampling error within lakes when estimating $PR_{MEAN}$, but that doesn't exist. The L&O figure S3 highlights the variability in empirical $PR_{MEAN}$ by water clarity group. Since water clarity was selected in all top models in the L&O paper, and $PR_{MEAN}$ estimates aren't yet scaled up to lake size, we feel using the variability in Figure 3a strikes a balance between overstepping inference and simplicity.  
+
+## The data  
+
+### PR and PR derived variables  
+There's several levels of PR variables we need to keep track of, that are described on p. 2207 of the L&O paper:  
+- $PR_{MEAN}$ is the mean daily photosynthetic rate, which is modeled for 96 lakes and empirically estimated via field collection and lab analysis for 61 lakes. This is measured in mg of carbon in a cubic meter per day.   
+- $PR_{TOTAL}$ is an annual measure of PR which is defined by $PR_{MEAN}$ , lake surface area in m^2, and the growing season lake (183 days). It's in tons of carbon per year units.  
+- $S_{MAX_{PR}}$ is maximum spawner density estimated by multiplying $PR_{TOTAL}$ by 187(spawner tons/C). The units are numbers of fish.  
+
+### The tables:  
+- Table S1 shows empirical estimates of $PR_{MEAN}$, calculated $S_{MAX_{PR}}$, various lake and sampling characteristics, and citations of what studies they came from.  
+- Table S5 is modeled estimates of $PR_{MEAN}$ and CLs for 96 lakes without empirical estimates of LakePR. We'll use these estimates to eventually calculate modeled estimates of $S_{MAX_{PR}}$ and SDs.  
+- `lake_data` is a table that was used in the analysis of 70 sockeye populations in the BioRxiv paper, which corresponds to the file `lakePR_final.txt` Brendan Connors gave me (Dylan) when I started playing with this analysis.  
+
+    
+## Data collation  
+
+### Load and transform data  
+We'll make a big table of all the data we need from the L&O paper by combining tables S1 and S5. The $PR_{MEAN}$ values in table S5 are the mean of $S_{MAX_{PR}}$ estimates from the top 4 models with the lowest RMSE.   
+```{r load-L&O-data, echo = TRUE}
+lnos1_skinny <- read.csv(here("data_input/lno_s1.csv"), header = TRUE) |> 
+  mutate(lake = tolower(gsub(" Lake| Lakes", "", Lake)),
+         SmaxPR = as.numeric(gsub(",", "", SMAX_PR))) |>
+  mutate(lake = tolower(gsub(" ", "_", lake)), 
+         lake_area_hec = as.numeric(gsub(",", "", Area..hec.)), 
+         est_origin = "empirical") |>
+  select(lake, est_origin, lake_area_hec, SmaxPR)
+
+lnos5 <- read.csv(here("data_input/lno_s5.csv"), header = TRUE) |>
+  transmute(lake = tolower(gsub(" ", "_", Lake)),
+            PR_mean = as.numeric(PRmean)) |>
+  mutate(est_origin = "PR_modeled")
+
+all_lakes <- bind_rows(lnos1_skinny, lnos5) |>
+  arrange(lake) |>
+  relocate(est_origin, .after=1)
+```
+
+Now we'll load the sockeye data I was originally given from the BioRxiv paper. This is what we'll compare to later.    
+```{r load-SK-data}
+sockeye_pops <- read.table(here("data_input/lakePR_final2.txt"), header = TRUE) |>
+  rename(lake = watershed, #for now because we'll join on this later
+         original_SmaxPR = SmaxPR, 
+         original_PR_mean = PR_mean) |>
+  arrange(lake) |>
+  select(lake, region, water_clarity, original_PR_mean, lake_area_Hec, PR_total, original_SmaxPR)
+```
+
+### Translate lakes into populations  
+We need to make lakes match up with populations. Some populations reside in multiple lakes. Each population of the 70 populations need a corresponding lake(s).  
+We'll take a quick preview of pops that don't have matches:     
+```{r check-pops-that-need-match}
+print(sockeye_pops$lake[which(!(sockeye_pops$lake %in% all_lakes$lake))])
+```
+  
+Then we'll make sure they have a match (or matches) in the lake data, then collapse them and compute new variables. We have to compute Damshilgwit's PR_mean up here because it is a modeled lake that will combine with an empirical lake, which messes with how code runs below. Area based on tracing a polygon in Google Earth. No area was provided on [Habitat Wizard](https://a100.gov.bc.ca/pub/reports/rwservlet?habitat_wizard_lakes_report&p_title=%22Ministry%20of%20Environment%22&P_LAKE_ID=116014) or iMap BC.   
+```{r match-pops-to-lakes}
+all_lakes <- all_lakes |>
+  mutate(lake_area_hec = ifelse(lake=="damshilgwit", 29.7, lake_area_hec), 
+         SmaxPR = ifelse(lake=="damshilgwit", 
+                             round(((PR_mean*(lake_area_hec*10000)*183)/(10^9))*187, 0), 
+                             SmaxPR), 
+         lake = case_when(lake %in% c("elbow", "lonesome", "rainbow") ~ "atnarko",
+                          lake %in% c("banks_east", "banks_west") ~ "banks",
+                          lake %in% c("l_kadjusdis", "u_kadjusdis") ~ "kadjusdis",
+                          lake %in% c("n_kwakwa", "south_kwakwa", "east_kwakwa", 
+                                      "mid_kwakwa") ~ "kwakwa",
+                          lake == "simpson" ~ "lowe",
+                          lake %in% c("marian", "eden") ~ "marian_eden",
+                          lake %in% c("mikado_upper", "mikado_low_&_mid.") ~ "mikado",
+                          lake == "damshilgwit" ~ "slamgeesh", 
+                          lake %in% c("tankeeah_lower", "tankeeah_upper") ~ "tankeeah",
+                          lake %in% c("tuno_e_lower", "tuno_e_middle") ~ "tuno_east",
+                          lake %in% c("tuno_w_lower", "tuno_w_upper") ~ "tuno_west",
+                          #fix some misspelled lakes so they match the sockeye pops 
+                          lake == "owekino" ~ "owikeno", 
+                          lake == "asitka" ~ "asitika",
+                          lake == "freeda_brodie" ~ "freeda_lakes",
+                          lake == "hartleybay" ~ "hartley_bay",
+                          TRUE ~ lake)) #argument to leave rest alone
+```
+
+Then double check which lakes from the L&O paper don't belong to any of the populations in the new analysis.  
+i.e. none of these lakes:    
+```{r L&O-leftovers}
+print(all_lakes$lake[which(!(all_lakes$lake %in% sockeye_pops$lake))])
+```
+
+belong to any of these populations:  
+```{r sockeye-pops}
+print(unique(sockeye_pops$lake))
+```
+This was validated by Will Atlas.  
+
+### Aggregate lakes into pops 
+Now that we've renamed these lakes to be their appropriate populations, we have multiple rows we need to collapse via `group_by()` with the same names that correspond to populations. We'll take the average $PR_{MEAN}$ so we can calculate $S_{MAX_{PR}}$ later for pops without empirical measurements.  
+```{r collapse, echo = TRUE}
+all_lakes <- all_lakes |>
+  mutate(est_origin = ifelse(lake=="slamgeesh", "both", est_origin)) |>
+  group_by(lake) |>
+  summarise(PR_mean = mean(PR_mean), 
+            SmaxPR = sum(SmaxPR),
+            lake_area_hec = sum(lake_area_hec),
+            est_origin = est_origin) |> 
+  distinct()
+```
+### Calculate $S_{MAX_{PR}}$
+Then join the lake data to the sockeye population data (because we need `lake_area_Hec`) and calculate $S_{MAX_{PR}}$ for the populations that are based on estimates of $PR_{MEAN}$ (i.e. ones that don't have $S_{MAX_{PR}}$ estimated yet).  
+```{r join-compute, echo = TRUE}
+sockeye_pops <- left_join(sockeye_pops, all_lakes, by = "lake") |>
+  rename(population = lake) |>
+  mutate(SmaxPR = ifelse(is.na(SmaxPR),
+                          round(((PR_mean*(lake_area_Hec*10000)*183)/(10^9))*187, 0), 
+                          SmaxPR))
+```
+Estimates I calculated from$PR_{MEAN}$, and aggregated from table S1 from table S5 *shouldn't be that different* from the SmaxPR reported in the `sockeye_data`. We'll check this.  
+```{r check-Smax}
+sockeye_pops |>
+  filter(SmaxPR != original_SmaxPR) |>
+  select(population, est_origin, original_SmaxPR, SmaxPR) |>
+  mutate(diff = SmaxPR - original_SmaxPR,
+          perc_diff = round(diff/original_SmaxPR,2)) |>
+  arrange(desc(abs(diff)))
+```
+- Based on recent observations of Smax, Will thinks he might have done calculations for the Lowe population wrong in the BioRxiv (i.e. `original_SmaxPR` is wrong because he added an inappropriate lake - Weir Lake -to this population) and that End Hill was a strange boggy system and should be dropped from analysis.   
+
+### Compute SDs for pops.   
+We'll read in the data used to create figure 3a in the L&O paper, which is $PR_{MEAN}$ by water clarity group for the 61 lakes with measured PR_mean.  
+This is a table I generated from Will's analysis he sent me in `LakePR_analysis_FINAL2.R`.     
+```{r read-SEs}
+water_SDs <- read.table(file = here("data_input/water_SDs.txt"), header = TRUE) |>
+  rename(water_clarity = water)
+
+print(water_SDs)
+```
+
+Now we need to convert these $PR_{MEAN}$ water clarity SDs into $S_{MAX_{PR}}$ SDs by using the same formula above that we used to go from $PR_{MEAN}$ to $S_{MAX_{PR}}$. This is really important because $S_{MAX_{PR}}$ is based on the size of the lake.        
+```{r SE-convert, echo = TRUE}
+SmaxPRs <- left_join(sockeye_pops, water_SDs, by = "water_clarity") |>
+  mutate(SmaxPR_SD = round(((SD*(lake_area_Hec*10000)*183)/(10^9))*187, 0)) |>
+  filter(population!="end_hill")  #drop this based on will's suggestion email 2022_10_18
+
+write.table(SmaxPRs, here("output/data/SmaxPRs.txt"), row.names = FALSE)
+```
+
+Then we'll have a look at the   
+```{r table-s1}
+original_S1 <- read.csv(here("data_input/lno_s1.csv"), header = TRUE) |>
+  mutate(lake = tolower(gsub(" Lake| Lakes", "", Lake))) |>
+  mutate(population = tolower(gsub(" ", "_", lake))) |>
+  select(population, Years, Sampling, Study)
+
+S1 <- SmaxPRs |>
+  mutate(PR_mean = ifelse(is.na(PR_mean), original_PR_mean, PR_mean), #for empirical pops where this wasnt published in S1
+         SmaxPR_CV = round(SmaxPR_SD/SmaxPR,2)) |> 
+  select(population, PR_mean, PR_total, SmaxPR, SmaxPR_SD, SmaxPR_CV, est_origin, region, water_clarity, lake_area_Hec, ) |>
+  left_join(original_S1, by = "population") |>
+  mutate(population = str_to_title(gsub("_", " ", population)))
+
+write.csv(S1, here("output/pub_tables/S1.csv"), row.names = FALSE)
+
+datatable(S1, rownames = FALSE, 
+          caption = 'Table S1. Lake PR data, SMAX_PR with error estimates, habitat characteristics and data sources. ',
+          filter = 'top', 
+          options = list(pageLength = 20, autoWidth = TRUE))
+```
+
+# Age structure  
+The quality and availability of age data was highly variable across populations. In some large and commercially-important populations (Atnarko, Babine, Long, Meziadin, and Owekino) estimates of annual age data are available. Specifically, for Babine, age-composition data is available throughout the time series. For Atnarko, age data is available in 33 years from 1976 to 2016 and in years missing age data we assumed age composition was equal to the long-term average. In the remaining three populations, annual age data was available only since 1989, so estimated recruitment to cohorts after 1986 reflects annual age variation, while earlier estimates of recruitment reflect mean age composition. In many other populations (n = 19), age estimates are limited to a few years, and we used average brood-year age composition values reported in English et al. (2016), data from Todd and Dickinson (1970) for Bowser Lake, and brood-year age composition reconstructed from scale and otoliths collected since 2012 during annual monitoring in Koeye, Namu, Port John, and Kadjusdis. Some data is available in the repository [here](https://github.com/DylanMG/sockeye-hab-SRR-Stan/blob/main/data_input/excel/FinalBroodSK.xlsx). 
+For the remaining populations without age data we modelled the available multinomial age proportion data against habitat correlates using Dirichlet regression (R-package DirichletReg version 0.6-3; Maier 2015) and using model outputs to predict age structure for populations lacking age data. Salmon exhibit considerable intraspecific variation in life histories and age at maturity (Quinn 2005), and this variation is often linked to differences in climate or hydrology within their natal watersheds (Beechie et al. 2006).  We found maximum watershed elevation was the best predictor of age composition; higher elevation watersheds tended to have older fish. This relationship was used to predict age structure for watersheds lacking data. This novel approach to predicting population age composition across the landscape facilitated the creation of brood tables for spawner-recruitment analysis, however, these estimates of population age structure are uncertain. Accordingly, estimates of $S_{MAX_{PR}}$ for populations lacking age data should be interpreted with greater caution. 

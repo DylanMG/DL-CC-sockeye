@@ -1,0 +1,70 @@
+"","pop","pr_mean","pr_total","smaxpr","smaxpr_sd","smaxpr_cv","est_origin","region","water_clarity","lake_area_hec","watershed","years","sampling","study","pop_index","sr_pairs"
+"1","alastair",209,262.4,49064,15648,0.32,"empirical","coast.fjord","clear",686,"Gitnadoix","1978","multiple","1",1,49
+"2","asitika",74.26,5.84,1093,981,0.9,"PR_modeled","interior","clear",43,NA,NA,NA,NA,2,4
+"3","atnarko",66.21,87.7,16541,16515,1,"empirical","interior","clear",724,NA,NA,NA,NA,3,38
+"4","awun",90.83,80.78,15106,8861,0.59,"PR_modeled","low.coastal","stained",486,NA,NA,NA,NA,4,44
+"5","azuklotz",278.26,111,20854,4973,0.24,"empirical","interior","clear",218,"Bear","2003","single","7",5,20
+"6","babine",140,11811,2208623,1051550,0.48,"empirical","interior","clear",46100,"Babine","1994-1995","multiple","2",6,46
+"7","banks",50.64,34,6308,6637,1.05,"empirical","low.coastal","stained",364,NA,NA,NA,NA,7,27
+"8","bear",158.4,572.5,107057,45050,0.42,"empirical","interior","clear",1975,"Bear","1978, 2003","multiple","1, 4",8,21
+"9","bloomfield",12.8,3.5,644,2680,4.16,"empirical","low.coastal","stained",147,"Bloomfield","2006","single","3",9,36
+"10","bonilla",115.64,47,8706,4011,0.46,"empirical","low.coastal","stained",220,"Bonilla","1979","multiple","2, 5",10,37
+"11","borrowman",56.18,2.26,423,401,0.95,"PR_modeled","low.coastal","stained",22,NA,NA,NA,NA,11,21
+"12","bowser",4.9,32.2,5610,42838,7.64,"empirical","interior","glacial",3591,"Upper Nass","2008","single","8",12,17
+"13","canoona",72.56,46,8566,6290,0.73,"empirical","low.coastal","stained",345,"Canoona","2004","single","4",13,31
+"14","curtis-inlet",103,57,10574,5470,0.52,"empirical","low.coastal","stained",300,"Curtis","1979","multiple","2",14,32
+"15","damdochax",99,26.81,4862,3376,0.69,"empirical","interior","clear",148,"Damdochax","2008","single","8",15,22
+"16","devon",103,32.8,6133,3173,0.52,"empirical","low.coastal","stained",174,"Devon","1979","multiple","2",16,45
+"17","evelyn",63.58,6.9,1284,1076,0.84,"empirical","low.coastal","stained",59,"Evelyn","2001","single","4",17,38
+"18","fairfax",52.7,3.86,721,729,1.01,"PR_modeled","low.coastal","stained",40,NA,NA,NA,NA,18,22
+"19","fred-wright",152.5,108,20195,9056,0.45,"empirical","interior","clear",397,"Kwinageese","1978","multiple","2, 8",19,18
+"20","freeda-lakes",68.37,35.78,6692,5215,0.78,"PR_modeled","coast.fjord","stained",286,NA,NA,NA,NA,20,15
+"21","hartley-bay",51.39,8.75,1635,1696,1.04,"empirical","low.coastal","stained",93,"Gabion","2005","single","6",21,28
+"22","hauyat",56.89,26.24,4906,4595,0.94,"PR_modeled","low.coastal","stained",252,NA,NA,NA,NA,22,25
+"23","johanson",66.35,17,3179,3193,1,"empirical","interior","clear",140,"Sustut","1994","multiple","1",23,7
+"24","johnston",211.7,72,13475,4243,0.31,"empirical","coast.fjord","clear",186,"Johnston","2005","single","6",24,11
+"25","kadjusdis",43.215,7.02,1316,1623,1.23,"PR_modeled","low.coastal","stained",89,NA,NA,NA,NA,25,32
+"26","kainet",107.89,11.85,2215,1369,0.62,"PR_modeled","coast.fjord","clear",60,NA,NA,NA,NA,26,34
+"27","kdelmashan",33.11,2.73,510,820,1.61,"PR_modeled","low.coastal","stained",45,NA,NA,NA,NA,27,19
+"28","keecha",56.85,34.5,6459,6053,0.94,"empirical","low.coastal","stained",332,"Keecha","2004","single","4",28,19
+"29","keswar",45.69,7.69,1438,1677,1.17,"PR_modeled","low.coastal","stained",92,NA,NA,NA,NA,29,10
+"30","kimsquit",121.8,37.22,6961,3809,0.55,"PR_modeled","coast.fjord","clear",167,NA,NA,NA,NA,30,22
+"31","kisameet",51.86,12.72,2378,2443,1.03,"PR_modeled","low.coastal","stained",134,NA,NA,NA,NA,31,7
+"32","kitkiata",289,142.8,26703,4923,0.18,"empirical","coast.fjord","stained",270,"Kitkiata","2005","single","6",32,25
+"33","kitlope",54,115.6,21621,13957,0.65,"empirical","coast.fjord","glacial",1170,"Kitlope","1978","multiple","2",33,46
+"34","kitsumkalum",33,118.9,22236,23489,1.06,"empirical","coast.fjord","glacial",1969,"Kitsumkalum","1994","multiple","1",34,49
+"35","kitwancool",247.5,351.9,65810,17724,0.27,"empirical","interior","clear",777,"Kitwancool","1995, 2003","multiple","1, 4",35,12
+"36","koeye",90.3,74.4,13906,8205,0.59,"empirical","low.coastal","stained",450,"Koeye","2006","single","3",36,26
+"37","kooryet",55.35,51.5,9641,9280,0.96,"empirical","low.coastal","stained",509,"Kooryet","2004","single","4",37,24
+"38","kwakwa",41.455,11.51,2085,2680,1.29,"PR_modeled","low.coastal","stained",147,NA,NA,NA,NA,38,33
+"39","lakelse",91,243.14,45466,33303,0.73,"empirical","coast.fjord","clear",1460,"Lakelse","1994, 2003","multiple","1, 4",39,44
+"40","long",70,269,50305,38289,0.76,"empirical","coast.fjord","stained",2100,"Long","1980","multiple","2",40,56
+"41","lowe",89.93,350.5,31494,38836,1.23,"empirical","coast.fjord","stained",2130,"Lowe","1978","multiple","2, 5",41,35
+"42","marian-eden",89.465,126.56,23421,13948,0.6,"PR_modeled","low.coastal","stained",765,NA,NA,NA,NA,42,35
+"43","mary-cove",42.05,2.46,460,583,1.27,"PR_modeled","low.coastal","stained",32,NA,NA,NA,NA,43,18
+"44","mathers",62.13,20.47,3827,3282,0.86,"PR_modeled","low.coastal","stained",180,NA,NA,NA,NA,44,10
+"45","mcdonell",59.84,24.5,4567,5087,1.11,"empirical","interior","clear",223,"Zymoetz","2001","single","4",45,36
+"46","mcloughlin",44.07,1.85,347,419,1.21,"PR_modeled","low.coastal","stained",23,NA,NA,NA,NA,46,30
+"47","mercer",63.44,13.23,2475,2079,0.84,"PR_modeled","low.coastal","stained",114,NA,NA,NA,NA,47,29
+"48","meziadin",144.67,936,175032,75753,0.43,"empirical","interior","clear",3321,"Meziadin","1978, 79, 2008","multiple","2, 8",48,31
+"49","mikado",18.97,9.3,1733,4868,2.81,"empirical","low.coastal","stained",267,NA,NA,NA,NA,49,40
+"50","morice",83,1481.5,277047,222491,0.8,"empirical","interior","clear",9754,"Morice","1980, 2001","multiple","2, 4",50,42
+"51","morrison",108,288.6,53960,26620,0.49,"empirical","interior","stained",1460,"Morrison","1995","multiple","1",51,52
+"52","motase",14.21,36.5,6823,16737,2.45,"empirical","interior","glacial",1403,"Motase","2003","single","4",52,15
+"53","namu",42.9,24.9,4654,5780,1.24,"empirical","low.coastal","stained",317,"Namu","2006","single","3",53,27
+"54","owikeno",95.5,1651.5,308836,112732,0.37,"empirical","coast.fjord","glacial",9450,NA,NA,NA,NA,54,56
+"55","port-john",65.44,11.38,2127,1732,0.81,"PR_modeled","low.coastal","stained",95,NA,NA,NA,NA,55,13
+"56","price",46.1,7.8,1467,1696,1.16,"empirical","low.coastal","stained",93,"Price","2006","single","3",56,30
+"57","prudhomme",63.83,23.6,4412,3683,0.83,"PR_modeled","low.coastal","stained",202,NA,NA,NA,NA,57,51
+"58","shawaltan",72.18,20.61,3853,2844,0.74,"PR_modeled","low.coastal","stained",156,NA,NA,NA,NA,58,41
+"59","sheneeza",51.95,4.18,782,802,1.03,"PR_modeled","low.coastal","stained",44,NA,NA,NA,NA,59,17
+"60","skidegate",75.85,99.25,18559,13036,0.7,"PR_modeled","low.coastal","stained",715,NA,NA,NA,NA,60,51
+"61","slamgeesh",68.82,9.6,2057,1734,0.84,"both","interior","clear",76,"Slamgeesh","2001","single","4",61,13
+"62","stephens",148.85,50.9,9526,4266,0.45,"empirical","interior","clear",187,"Kispiox","2002","single","4",62,41
+"63","sustut",75.69,34.6,6476,4558,0.7,"empirical","low.coastal","stained",250,"Sustut","1994","multiple","1, 5",63,7
+"64","swan",95.12,309.3,56574,40534,0.72,"empirical","interior","clear",1777,"Kispiox","1978, 2002","multiple","1, 4",64,21
+"65","tankeeah",37.93,19.4,3634,5105,1.4,"empirical","low.coastal","stained",280,NA,NA,NA,NA,65,36
+"66","tuno-east",40.48,2.7,513,675,1.32,"PR_modeled","low.coastal","stained",37,NA,NA,NA,NA,66,17
+"67","tuno-west",40.62,3.27,598,784,1.31,"PR_modeled","low.coastal","stained",43,NA,NA,NA,NA,67,11
+"68","yakoun",83.21,127.3,23805,15243,0.64,"PR_modeled","low.coastal","stained",836,NA,NA,NA,NA,68,45
+"69","yeo",72.01,11.14,2082,1541,0.74,"PR_modeled","low.coastal","stained",84.5,NA,NA,NA,NA,69,23

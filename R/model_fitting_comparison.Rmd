@@ -1,0 +1,969 @@
+---
+title: "Sockeye stock recruit relationships in Stan"
+author: "Dylan M. Glaser (Fisheries and Oceans Canada)"
+date: '`r format(Sys.time(), "%d %B, %Y")`'
+knit: (function(inputFile, encoding) {
+  rmarkdown::render(inputFile, encoding = encoding, output_dir = "./output") })
+output: 
+  html_document:
+    smooth_scroll: yes
+    theme: journal
+    highlight: zenburn
+    toc: TRUE
+    toc_float: yes
+---
+
+```{r pkg-setup, echo = FALSE, message = FALSE, warning = FALSE}
+library(tidyverse)
+library(here)
+library(ggh4x) #to control facetting
+library(rstan) #to interface R with Stan
+library(bayesplot) #for mcmc_combo plots
+library(loo) #for looic
+library(patchwork) #to align multi-pane plots
+library(grid) #to help patchwork with fonts
+library(gsl) #for lambert_W0()
+library(DT) #for making a nice html table 
+source(here("R/functions.R"))
+
+set.seed(123)
+
+knitr::opts_chunk$set(warning = FALSE, 
+                      message = FALSE,
+                      echo = FALSE,
+                      fig.path = paste0(here("output/plots"), "/"))
+```
+# Background  
+This is the stock recruit analyses supporting *Combining hierarchical models and habitat data improves assessment of data limited salmon stocks* by William I. Atlas, Dylan M. Glaser, Brendan M. Connors, Carrie A. Holt, Daniel T. Selbie, Steve Cox-Rogers, Charmaine Carr-Harris, Eric Hertz, Jonathan W. Moore in *Marine and Coastal Fisheries*.   
+
+### Load data  
+Read in the PR data and the time series of stock recruit data then join into 1 big dataframe. $S_{MAX_{PR}}$ and error estimates are calculated over [here](https://github.com/DylanMG/sockeye-hab-SRR-Stan/blob/main/output/get_SmaxPR.html).   
+```{r load-data}
+SmaxPR <- read.table(here("output/data/SmaxPRs.txt"), 
+                     header = TRUE) |>
+  select(population, region, water_clarity, SmaxPR, SmaxPR_SD) |>
+  rename(pop = population) #to match below
+
+SR_data <- read.table(here("data_input/FinalBroodSK.txt"), 
+                      header = TRUE) |>
+  select(-n.data, -n.stock) |> #dump useless vars
+  mutate(watershed = gsub("_lake|_lakes", "", watershed)) |>
+  #fix some names so it joins
+  mutate(watershed = case_when(watershed == "owekino" ~ "owikeno",
+                               watershed == "portjohn" ~ "port_john",
+                               watershed == "freeda_brodie" ~ "freeda_lakes",
+                               TRUE ~ watershed)) |> #leave the rest alone
+  mutate(logRS = log(total_rec/exp_spawn)) |> #shorten names for plotting, etc.
+  rename(pop = watershed) |>
+  relocate(pop, 1) |>
+  filter(pop !="end_hill") |>
+  arrange(pop, year) |>
+  left_join(SmaxPR, by = "pop") |> #join it to have 1 object to reference
+  mutate(pop = gsub("_", "-", pop)) |> #change delimiter for use later
+  na.omit() #drops years missing logRS
+
+SR_pairs <- SR_data |>
+  group_by(pop, region, water_clarity, SmaxPR, SmaxPR_SD) |>
+  summarise(SR_pairs = n()) |>
+  distinct() |>
+  pull(SR_pairs)
+
+pop_data <- read.csv(here("output/pub_tables/S1.csv")) |>
+  rename(pop = population) |>
+  mutate(pop = gsub("_", "-", pop)) |> #change delimiter for use later
+  mutate(pop_index = row_number()) |>
+  cbind(SR_pairs)
+
+colnames(pop_data) <- tolower(colnames(pop_data))
+
+rm(SmaxPR, SR_pairs)
+```
+  
+### Plot data  
+Make some plots to see the data we're working with.    
+```{r SR-plots}
+#make helpers
+max_facets <- 16
+pages <- ceiling(length(unique(SR_data$pop))/max_facets)
+j <- 1 #facet index helper
+
+#make and print plots
+for(i in 1:pages){
+  sub_dat <- filter(SR_data, 
+                    pop %in% unique(SR_data$pop)[j:(j+(max_facets-1))])
+  
+  p <- ggplot(sub_dat, 
+              aes(exp_spawn/1000, logRS)) +
+    geom_point() +
+    ggh4x::facet_wrap2(vars(pop), 
+                       nrow=(max_facets/4), 
+                       ncol=(max_facets/4), 
+                       trim_blank=FALSE,
+                       scales = "free_x") +
+    labs(title = paste0("Sockeye spawner-recruit relationship (", i, " of ", pages, ")"), 
+         y = "ln(R/S)", 
+         x = "Spawners (thousands)") +
+    theme_bw()
+  
+  print(p)
+  
+  j <- j + max_facets
+}
+```
+
+# Modelling  
+We're going to fit Ricker stock recruit relationships (i.e. variations of  $log(R/S) = log(\alpha) - \beta*S$) in a Bayesian framework with different priors and hierarchical structures to see which fit best. In short, we'll compare different groupings of hierarchical $\alpha$, uninformative/informative priors based on biogeoclimatic zones and photosynthetic rates. These will be fit in Stan via the `rstan` package where we'll use default options in the `stan()` function.
+
+Models took several forms:  
+ 
+**1.** Independent models fit to each population with uninformative priors  
+**2.** Uninformative $\beta$ priors fit to each population with uninformative hierarchical $\alpha$(s) where:  
+\   \ **2a.** $\alpha$ is ungrouped and drawn from a distribution across all 69 populations OR  
+\   \ **2b.** $\alpha$s categorically grouped by biogeoclimatic zone (n=3) and drawn from that group's distribution.  
+**3.** Fits for each population with uninformative $\alpha$, and informative $\beta$ based on $S_{MAX_{PR}}$ estimates  
+**4.** Informative, hierarchical $\alpha$(s) based on model performance in model 2 (i.e. grouped $\alpha$s or not), with informative priors on data based on $S_{MAX_{PR}}$.  
+
+As we fit models we'll check them with `loo()` and look at how the chains mixed with the `bayesplot::mcmc_combo()` function.  
+```{r compile-stan-data}
+logRS <- SR_data$logRS #response variable
+pop <- as.numeric(as.factor(SR_data$pop)) #pop index vector
+N <- length(logRS) #n observations
+J <- max(pop) #n populations
+K <- max(as.numeric(as.factor(SR_data$region))) #n regions
+region <- as.numeric(as.factor(SR_data$region)) #region index vector
+reg_pop <- SR_data |> #region-pop key for indexing
+  select(pop, region) |>
+  distinct() |>
+  pull(region) |>
+  as.factor() |>
+  as.numeric()
+
+X <- matrix(rep(0, (N*J)), 
+            nrow=N, 
+            ncol=J) #empty predictor matrix to populate
+
+for(i in 1:N){
+  X[i, pop[i]] <- SR_data$exp_spawn[i] #populated!
+}
+int_X <- ifelse(X!=0, 1,0) #binary matrix to index when to "turn on" intercept 
+SmaxPR <- as.numeric(unique(SR_data$SmaxPR)) #SmaxPR prior mus
+SmaxPR_SD <- SR_data |> #SmaxPR SDs
+  select(pop, SmaxPR_SD) |>
+  distinct() |>
+  pull(SmaxPR_SD) |> #got creative because a SD repeats
+  as.numeric() 
+
+stan_data <- list(logRS=logRS,
+             N=N,
+             pop=pop,
+             J=J,
+             K=K,
+             region=region, 
+             reg_pop=reg_pop,
+             X=X,
+             int_X=int_X,
+             SmaxPR=SmaxPR,
+             SmaxPR_SD=SmaxPR_SD)
+
+refit <- FALSE #toggle if you want to refit models or used the stored model fits
+rm(logRS, N, pop, J, K, region, reg_pop, X, int_X, SmaxPR, SmaxPR_SD)
+```
+### Model 1  
+Fits for each population with uninformative priors. We won't plot any `mcmc_combo()` for this because there's too many parameters (3 per population, since all independent) to nicely visualize in a summary doc. You can fork the [code](https://github.com/DylanMG/sockeye-hab-SRR-Stan/blob/main/R/model_fitting_comparison.Rmd) and run `rstanarm::launch_shinystan()` to check  models if you want. Just look at the sigma as a check, then report max Rhats later.   
+```{r m1, results= "hide"}
+if("m1" %in% list.files(here("output/model_fits")) & refit == FALSE){
+  m1 <- readRDS(here("output/model_fits/m1"))
+} else{
+  m1 <- stan(here("Stan/model1.stan"), 
+             data=stan_data, 
+             model_name = "m1", 
+             iter = 4000)
+  saveRDS(m1, file = here("output/model_fits/m1"))
+}
+```
+
+```{r m1 optional diagnostics}
+#another type of pareto plot - and some means to pull other output if desired
+if(FALSE){
+  look <- as.data.frame(loo(m1)$diagnostics) |>
+    cbind(select(SR_data, pop, region, water_clarity)) |> #df and vars to plot by 
+    mutate(position = row_number(), 
+          pop_num = as.numeric(as.factor(pop)))
+
+  ggplot(look, aes(x=position, y=pareto_k, shape=region, color = water_clarity)) +
+      geom_hline(yintercept = 0.5, 
+               lty = 2, 
+               color= "red") +
+      geom_hline(yintercept = 0.7, 
+               lty = 2, 
+               lwd = 1.5,
+               color = "red") +
+    geom_point() +
+    theme_classic() +
+    scale_color_viridis_d()
+  
+  #just see the bad pareto
+  look |> 
+    arrange(desc(pareto_k)) |>
+    head()
+}
+```
+
+```{r m1 diagnostics}
+mcmc_combo(m1, combo = c("dens_overlay", "trace"), 
+           pars = c("sigma"), 
+           gg_theme = legend_none())
+#plot(loo(m1)) #basic loo plot
+```
+
+### Models 2a and 2b  
+Different hierarchical structures of uninformative $\alpha$ priors, with uninformative $\beta$ priors fit to each stock.
+
+#### Model 2a  
+Uninformative hierarchical $\alpha$  
+```{r m2a, results= "hide"}
+if("m2a" %in% list.files(here("output/model_fits")) & refit == FALSE){
+  m2a <- readRDS(here("output/model_fits/m2a"))
+} else{
+  m2a <- stan(here("Stan/model2a.stan"), 
+              data=stan_data, 
+              model_name = "m2a", 
+              iter = 4000)
+  saveRDS(m2a, file = here("output/model_fits/m2a"))
+}
+```
+
+```{r m2a-diagnostics}
+mcmc_combo(m2a, combo = c("dens_overlay", "trace"), 
+           pars = c("log_a", "sd_a_pop", "sigma"), 
+           gg_theme = legend_none())
+#loo(m2a)
+#plot(loo(m2a))
+```
+
+#### Model 2b  
+Now we make $\alpha$ hierarchical to each biogeoclimatic zone; each of the 3 biogeoclimatic regions gets it *own* distribution that population level random effects are drawn from.    
+```{r m2b, results="hide"}
+if("m2b" %in% list.files(here("output/model_fits")) & refit == FALSE){
+  m2b <- readRDS(here("output/model_fits/m2b"))
+} else{
+  m2b <- stan(here("Stan/model2b.stan"), 
+              data=stan_data, 
+              model_name = "m2b", 
+              iter = 4000)
+  saveRDS(m2b, file = here("output/model_fits/m2b"))
+}
+```
+
+```{r, m2b-diagnostics}
+mcmc_combo(m2b, combo = c("dens_overlay", "trace"), 
+           pars = c("log_a", "sd_a_pop", "sd_a_region", "sigma"), 
+           gg_theme = legend_none())
+mcmc_combo(m2b, combo = c("dens_overlay", "trace"), 
+           pars = c("log_a_region[1]", "log_a_region[2]", "log_a_region[3]"), 
+           gg_theme = legend_none()) 
+#loo(m2b)
+#plot(loo(m2b))
+```
+#### Compare models 2a and 2b with IC  
+If this is a positive value then m2b is a better fit by that many looic points.     
+```{r m2-compare, echo = TRUE}
+loo(m2a)$estimates[3,1] - loo(m2b)$estimates[3,1]
+```
+### Model 3  
+Models fit to each lake with an informative $\beta$ prior based on $S_{MAX_{PR}}$, and an uninformative prior for $\alpha$. We'll just plot the sigma here since everything else is independent.  
+```{r m3, results="hide"}
+if("m3" %in% list.files(here("output/model_fits")) & refit == FALSE){
+  m3 <- readRDS(here("output/model_fits/m3"))
+} else{
+  m3 <- stan(here("Stan/model3.stan"), 
+             data=stan_data, 
+             model_name = "m3", 
+             iter = 4000)
+  saveRDS(m3, file = here("output/model_fits/m3"))
+}
+```
+
+```{r m3-diagnostics}
+#need to find a better way to check the chains?
+mcmc_combo(m3, combo = c("dens_overlay", "trace"), 
+           pars = c("sigma"), 
+           gg_theme = legend_none())
+#loo(m3)
+#plot(loo(m3))
+```
+### Model 4
+Informative, hierarchical $\alpha$ based on model performance in model 2 (i.e. grouped $\alpha$ or not), with informative priors on data based on Smax_PR.   
+```{r m4, results="hide"}
+if("m4" %in% list.files(here("output/model_fits")) & refit == FALSE){
+  m4 <- readRDS(here("output/model_fits/m4"))
+} else{
+  m4 <- stan(here("Stan/model4.stan"), 
+             data=stan_data, 
+             model_name = "m4", 
+             iter = 4000)
+  saveRDS(m4, file = here("output/model_fits/m4"))
+}
+```
+
+Then check model 4   
+```{r m4 diagnostics}
+mcmc_combo(m4, combo = c("dens_overlay", "trace"), 
+           pars = c("log_a", "sd_a_pop", "sigma"), 
+           gg_theme = legend_none())
+mcmc_combo(m4, combo = c("dens_overlay", "trace"), 
+           pars = c("log_a_region[1]", "log_a_region[2]", "log_a_region[3]"), 
+           gg_theme = legend_none()) 
+#loo(m4)
+#plot(loo(m4))
+```
+
+### Model performance  
+We'll take a look at the max rhats.  
+```{r rhat}
+models <- list(m1=m1, 
+               m2a=m2a, 
+               m2b=m2b, 
+               m3=m3, 
+               m4=m4)
+
+max_Rhats <- models |>
+map(function(x) round(max(as.data.frame(summary(x)$summary)$Rhat), 2)) |>
+  unlist() |>
+  as.data.frame()
+
+max_Rhats <- max_Rhats |> 
+  mutate(model = rownames(max_Rhats)) |>
+  rename(max_Rhat = 1) |>
+  relocate(model, 1)
+
+write.csv(max_Rhats, here("output/data/max_Rhats.csv"), 
+          row.names = FALSE)
+
+datatable(max_Rhats,
+          rownames = FALSE,
+          options = list(dom = 't'))
+```
+
+Then look at the IC table and model weights to see what fit the best.  
+```{r table1}
+table1 <- get_loo_table(models)
+
+datatable(table1,
+          rownames = FALSE,
+          options = list(dom = 't'))
+write.csv(table1, here("output/pub_tables/table1.csv"), row.names = FALSE)
+```
+## Extract draws, get $S_{MSY}$  
+After extracting draws we can look at regional productivity by model.  
+```{r draws-fig-data}
+#get some data for figs ready
+all_draws <- get_draws(models, pop_data)
+
+#then get regional productivity
+reg_prod <- all_draws |>
+  group_by(model, region) |>
+  summarise(log_a_mu = mean(log_a),
+            log_a_sd = sd(log_a), 
+            a_mu = round(exp(log_a_mu), 2), 
+            a_sd = round(exp(log_a_sd), 2)) |>
+  mutate(log_a_mu = round(log_a_mu, 2), 
+         log_a_sd = round(log_a_sd, 2))
+
+datatable(reg_prod, rownames = FALSE, 
+          caption = NA,
+          filter = 'top', 
+          options = list(pageLength = 15, autoWidth = TRUE))
+```
+
+And also look at $S_{MSY}$ varied between the top 2 models. This is some data we'll use for figure 1.  
+``` {r fig 1 data}
+fig1_data <- all_draws |>
+  filter(model %in% c("m2b", "m4")) |>
+  group_by(model, pop) |>
+  summarise(CV = round(sd(Smsy)/mean(Smsy), 2)) |>
+  pivot_wider(names_from = model, 
+              values_from = CV) |>
+  mutate(perc_diff_CV = perc_diff(m2b, m4), 
+         diff_CV = m2b - m4, 
+         diff_CV_percentage = diff_CV*100) |>
+  left_join(select(pop_data, pop, region, est_origin, water_clarity, years, sr_pairs),
+            by = "pop")
+
+datatable(fig1_data, rownames = FALSE, 
+          caption = NA,
+          filter = 'top', 
+          options = list(pageLength = 20, autoWidth = TRUE))
+
+write.csv(fig1_data, here("output/data/fig1_data.csv"), row.names = FALSE)
+```
+
+  
+```{r thinning data compile}
+## Thinning exercise  
+  #We'll also take different amounts of data from Meziadin, which is a heavily monitored 
+  #wild population that has high #quality age and escapement data.
+
+thin <- c(.2, .4, .6, .8, 1)
+
+thinning_pops <- "meziadin"  #set up robustly in case one wants multiple pops
+
+thinning_data <- vector(mode="list", length(thin)*length(thinning_pops))
+n <- NULL #empty obj to populate w/ n_data by percent for plotting later
+k <- 1
+for(i in thinning_pops){
+  for(j in thin){
+    
+    other_data <- SR_data |>
+      filter(pop != i)
+    
+    thinned_data <- SR_data |>
+      filter(pop==i) |>
+      slice_sample(prop = j)
+    
+    thin_df <-  bind_rows(other_data, thinned_data) |>
+      arrange(pop, year) 
+  
+    n_data <- thinned_data |>
+      summarise(n_data = as.character(n())) |>
+      mutate(pop = str_to_title(i), 
+             thin = gsub(".", "-", j, fixed = TRUE))
+    
+    n <- rbind(n, n_data)
+    
+    t_logRS <- thin_df$logRS #response variable
+    t_pop <- as.numeric(as.factor(thin_df$pop)) #pop index vector
+    t_N <- length(t_logRS) #n observations
+    t_J <- max(t_pop) #n populations
+    t_K <- max(as.numeric(as.factor(thin_df$region))) #n regions
+    t_region <- as.numeric(as.factor(thin_df$region)) #region index vector
+    t_reg_pop <- thin_df |> #region-pop key for indexing
+      select(pop, region) |>
+      distinct() |>
+      pull(region) |>
+      as.factor() |>
+      as.numeric()
+
+    t_X <- matrix(rep(0, (t_N*t_J)), 
+                nrow=t_N, 
+                ncol=t_J) #empty predictor matrix to populate
+
+    for(l in 1:t_N){
+      t_X[l, t_pop[l]] <- thin_df$exp_spawn[l] #populated!
+      }
+    t_int_X <- ifelse(t_X!=0, 1,0) #binary matrix to index when to "turn on" intercept 
+    t_SmaxPR <- as.numeric(unique(thin_df$SmaxPR)) #SmaxPR prior mus
+    t_SmaxPR_SD <- thin_df |> #SmaxPR SDs
+      select(pop, SmaxPR_SD) |>
+      distinct() |>
+      pull(SmaxPR_SD) |> #got creative because a SD repeats
+      as.numeric() 
+
+    thin_list <- list(logRS=t_logRS,
+                      N=t_N,
+                      pop=t_pop,
+                      J=t_J,
+                      K=t_K,
+                      region=t_region, 
+                      reg_pop=t_reg_pop,
+                      X=t_X,
+                      int_X=t_int_X,
+                      SmaxPR=t_SmaxPR,
+                      SmaxPR_SD=t_SmaxPR_SD)
+
+      thinning_data[[k]] <- thin_list
+      
+      k <- k + 1
+  }
+}
+
+rm(thin_df, thinned_data, n_data, other_data, thin_list, t_logRS, t_N, t_pop, t_J, t_K, 
+   t_region, t_reg_pop, t_X, t_int_X, t_SmaxPR, t_SmaxPR_SD)
+
+#model fitting----------------------------------------------------------------------------
+
+#swap delimiter in model names so we can write it as file w/o "." in the name
+thinned_models <- purrr::map(thinning_pops, ~{
+  paste0(.x, "_", gsub( ".", "-", thin, fixed = TRUE))}) |>
+  unlist()
+
+j <- 1 
+thinned_fits <- list()
+
+for(i in thinned_models){
+  
+        if(paste0("m1_", i) %in% list.files(here("output/model_fits/thinning")) & refit == FALSE){
+  m1_thin <- readRDS(here(paste0("output/model_fits/thinning/m1_", i)))
+} else{
+  m1_thin <- stan(file=here("Stan/model1.stan"),
+                  data=thinning_data[[j]], 
+             iter = 4000)
+  saveRDS(m1_thin, file = here(paste0("output/model_fits/thinning/m1_", i)))
+}
+  
+        if(paste0("m2a_", i) %in% list.files(here("output/model_fits/thinning")) & refit == FALSE){
+  m2a_thin <- readRDS(here(paste0("output/model_fits/thinning/m2a_", i)))
+} else{
+  m2a_thin <- stan(file=here("Stan/model2a.stan"),
+                  data=thinning_data[[j]], 
+             iter = 4000)
+  saveRDS(m2a_thin, file = here(paste0("output/model_fits/thinning/m2a_", i)))
+}
+  
+      if(paste0("m2b_", i) %in% list.files(here("output/model_fits/thinning")) & refit == FALSE){
+  m2b_thin <- readRDS(here(paste0("output/model_fits/thinning/m2b_", i)))
+} else{
+  m2b_thin <- stan(file=here("Stan/model2b.stan"),
+                  data=thinning_data[[j]], 
+             iter = 4000)
+  saveRDS(m2b_thin, file = here(paste0("output/model_fits/thinning/m2b_", i)))
+}
+  
+        if(paste0("m3_", i) %in% list.files(here("output/model_fits/thinning")) & refit == FALSE){
+  m3_thin <- readRDS(here(paste0("output/model_fits/thinning/m3_", i)))
+} else{
+  m3_thin <- stan(file=here("Stan/model3.stan"),
+                  data=thinning_data[[j]], 
+             iter = 4000)
+  saveRDS(m3_thin, file = here(paste0("output/model_fits/thinning/m3_", i)))
+}
+  
+  if(paste0("m4_", i) %in% list.files(here("output/model_fits/thinning")) & refit == FALSE){
+  m4_thin <- readRDS(here(paste0("output/model_fits/thinning/m4_", i)))
+} else{
+  m4_thin <- stan(file=here("Stan/model4.stan"),
+                  data=thinning_data[[j]], 
+             iter = 4000)
+  saveRDS(m4_thin, file = here(paste0("output/model_fits/thinning/m4_", i)))
+}
+  
+    thinned_fits[[j]] <- m1_thin
+    thinned_fits[[j+length(thinned_models)]] <- m2a_thin #add the total # of models for each to index
+    thinned_fits[[j+length(thinned_models)*2]] <- m2b_thin
+    thinned_fits[[j+length(thinned_models)*3]] <- m3_thin
+    thinned_fits[[j+length(thinned_models)*4]] <- m4_thin
+    
+    j <- j + 1
+
+}
+
+#get draws from thinned models------------------------------------------------------------
+
+#computationally expensive be patient
+thinned_draws <- map2(thinned_fits, 
+                      c(paste0("m1_", thinned_models),
+                        paste0("m2a_", thinned_models),
+                        paste0("m2b_", thinned_models),
+                        paste0("m3_", thinned_models), 
+                        paste0("m4_", thinned_models)),  
+    ~cbind(rstan:::.make_plot_data(.x, 
+                                   pars = c("log_a_pop", "b_pop"))$samp, 
+           model_name = rep(.y)))  |> #instead of get_draws() because of model naming issue*
+ bind_rows()|>
+  filter(chain == 1) |>
+  mutate(pop_index = as.numeric(str_extract(parameter, "[[:digit:]]+"))) |>
+  left_join(select(pop_data, pop, pop_index, region), 
+            by = "pop_index") |>
+  filter(pop %in% str_to_title(thinning_pops)) |> #still fluff here since pops won't match model_name
+  mutate(parameter = ifelse(grepl("log_a", parameter), "log_a", "b")) |>
+  tidyr::pivot_wider(names_from = parameter, 
+                     values_from = value) |>
+  separate(model_name, c("model", "pop_reduced", "thin"), sep = "_") |>
+  filter(pop_reduced == tolower(pop)) |> #only retain fits from the pop that was reduced
+  select(pop, model, thin, region, log_a, b) |>
+  mutate(Smsy = (1-lambert_W0(exp(1-log_a)))/b) |>
+  left_join(n, by = c("pop", "thin"))
+
+#*model naming issue - once a stan model is compiled it retains the same name; if you loop 
+  #a stan model it'll keep the name of the first time the model was compiled - annoying... 
+
+#then get the smsy bias data--------------------------------------------------------------
+m4_median <- thinned_draws |>
+  filter(model == "m4", thin == 1) |>
+  group_by(pop) |>
+  summarise(Smsy_med = median(Smsy))
+
+Smsy_bias <- thinned_draws |>
+  left_join(m4_median, by = "pop") |>
+  mutate(perc_diff_Smsy = perc_diff2(log(Smsy_med), log(Smsy)), 
+         pop = factor(pop, levels = thinning_pops),
+         n_data = factor(n_data, levels = unique(thinned_draws$n_data)),
+         thin = gsub("-", ".", thin, fixed = TRUE))
+
+write.csv(Smsy_bias, here("output/data/Smsy_bias.csv"))
+```
+# Figures  
+
+### Fig 1  
+Difference in CV since CVs are standardized
+
+```{r fig1, fig.width=5.62, fig.height=4.215, dpi= 300}
+p1 <- ggplot(fig1_data,aes(sr_pairs, diff_CV)) +
+  theme_classic() +
+  geom_point(aes(color = region)) +
+  geom_hline(yintercept = 0, 
+             lty = 2) +
+  annotate("text", x = 5, y = 50, label = "(A)") +
+  theme(legend.position = "bottom", 
+        legend.title = element_text(size = 9),
+        legend.text = element_text(size = 7),
+        legend.key.size = unit(.1, "cm"),
+        text = element_text(family = "serif")) + 
+  scale_color_viridis_d(name = "Region", 
+                       labels = c("coastal fjord", "interior", "low coastal")) +
+  stat_smooth(method = "loess", 
+              #aes(color=region), 
+              color = "black",
+              se = FALSE, 
+              alpha = 0.5) +
+  labs(x = "Years of SR pairs", 
+       y = NULL)
+
+p2 <- ggplot(filter(fig1_data, est_origin != "both"), aes(est_origin, diff_CV)) +
+  geom_violin(aes(fill=est_origin), 
+              alpha = 0.5, 
+              draw_quantiles = 0.5) +
+    geom_hline(yintercept = 0, 
+             lty = 2) +
+  annotate("text", x= .52, y = 50, label = "(B)") +
+  theme_classic() +
+  theme(text = element_text(family="serif"),
+        legend.position= "bottom", 
+        legend.title = element_text(size=9),
+        legend.text = element_text(size=7),
+        legend.key.size = unit(.5, "cm"),) + 
+  scale_fill_viridis_d(name = "Estimate method", 
+                       labels = c("empirical", "modeled")) +
+  scale_x_discrete(labels = c("empirical", "modeled")) +
+  labs(x= "PR estimate method", y=NULL) 
+
+p3 <- ggplot(fig1_data, aes(region, diff_CV)) +
+      geom_violin(aes(fill=est_origin), 
+                  alpha = 0.5, 
+                  draw_quantiles = 0.5) +
+    geom_hline(yintercept = 0, 
+             lty = 2) +
+  annotate("text", x= .6, y = 50, label = "(C)") +
+  theme_classic() +
+  theme(text = element_text(family="serif")) +
+  scale_fill_viridis_d(name = "Est. origin", 
+                       labels = c("empirical", "modeled")) +
+  scale_x_discrete(labels = c("coastal fjord", "interior", "low coastal")) +
+  labs(x= "Region", y=NULL) +
+  guides(fill="none")
+
+p4 <- ggplot(fig1_data, aes(water_clarity, diff_CV)) +
+  geom_violin(aes(fill=est_origin), 
+              alpha = 0.5, 
+              draw_quantiles = 0.5) +
+  geom_hline(yintercept = 0, 
+             lty = 2) +
+  annotate("text", x= .6, y = 50, label = "(D)") +
+  theme_classic() +
+  theme(text = element_text(family="serif")) + 
+  scale_fill_viridis_d() +
+  labs(x= "Water clarity", y=NULL) +
+  guides(fill="none")
+
+pw <- ((p1/p3)|(p2/p4))
+
+p <- gridExtra::grid.arrange(patchworkGrob(pw), 
+                        left = textGrob(expression("Reduction in S"["MSY"]*" uncertainty (CV)"), 
+                                        gp = gpar(fontfamily = "serif"), rot=90))
+#^ from https://statisticsglobe.com/add-subscript-and-superscript-to-plot-in-r example 3
+ggsave(here("output/pub_figs/fig1.png"), 
+       plot = p,
+       width = 5.61, 
+       height = 4.22, 
+       dpi = 300)
+```
+
+### Figure 2  
+$S_{MSY}$ posterior densities across varying amounts of data in 2 data rich populations.  
+
+Percent differences (i.e. bias) relative to the full data m4 median.  
+```{r fig 2, fig.width=5.62, fig.height=4.215, dpi= 300}
+p <- ggplot(Smsy_bias, aes(n_data, perc_diff_Smsy))+
+   geom_violin(fill = "grey",
+              draw_quantiles = 0.5) +
+   geom_hline(yintercept = 0, 
+             lty = 2) +
+  facet_wrap(~model, scales = "free_y") +
+  labs(title = paste("Smsy bias across different amounts of data at",
+                     str_to_title(thinning_pops)), 
+        y = "Percent difference", 
+       x = "Numer of SR pairs") +
+  theme_bw() +
+  theme(legend.position = "bottom", 
+        text = element_text(family="serif")) +
+  guides(fill="none")
+
+ggsave(here("output/pub_figs/fig2.png"), 
+       plot = p,
+       width = 5.61, 
+       height = 4.22, 
+       dpi = 300)
+
+print(p)
+```
+### Figure 3  
+
+```{r fig 3 wrangle}
+index_df <- cbind(pop_data$pop, as.numeric(as.factor(pop_data$pop))) #helper df for the loop 
+
+lakes <- c("Babine", "Long", "Meziadin", "Owikeno", "Asitika", "Bear", "Bowser", "Morice")
+
+fig3_preds <- NULL
+fig3_data <- NULL
+
+for(i in unique(lakes)){
+  for(j in c("m1", "m4")){
+    sub_draw <- filter(all_draws, pop==i, model==j)
+    sub_dat <- filter(SR_data, pop==tolower(i))
+    
+    max_samples <- nrow(sub_draw)
+    spw <- seq(0, max(sub_dat$exp_spawn), length.out = 100)
+    SR_pred <- matrix(NA, 100, max_samples)
+    
+    for(k in 1:max_samples){
+      r <- sample(seq(1,max_samples), 1, replace=TRUE)
+      log_a <- sub_draw$log_a[r]
+      b <- sub_draw$b[r]
+      SR_pred[,k] <- (exp(log_a)*spw*exp(-b*spw))
+    }
+    SR_pred <- cbind(spw,t(apply(SR_pred,c(1),quantile,probs=c(0.05,0.5,0.95),na.rm=T))) |>
+      as.data.frame() |>
+      round(2) |>
+      mutate(pop = i, 
+             model = j)
+    
+    fig3_preds <- bind_rows(SR_pred, fig3_preds)
+    
+    fig3_data <- bind_rows(sub_dat, fig3_data)
+  }
+}
+
+colnames(fig3_preds) <- c("Spawn", "Rec_lwr", "Rec_med", "Rec_upr", "pop", "model")
+
+fig3_preds <- fig3_preds |>
+  mutate(pop = factor(pop, levels = lakes))
+
+fig3_data <- fig3_data |>
+  mutate(pop = factor(str_to_title(pop), levels = lakes))
+
+p <- ggplot() +
+  geom_ribbon(data = fig3_preds, aes(x = Spawn/1000, ymin = Rec_lwr/1000, ymax = Rec_upr/1000, 
+                                      fill = model, color = model), alpha=0.5) +
+  geom_line(data = fig3_preds, aes(x = Spawn/1000, y = Rec_med/1000, color=model), size = 1) +
+  geom_point(data = fig3_data, aes(x=exp_spawn/1000, y=total_rec/1000)) +
+  facet_wrap(~pop, scales="free", nrow=2) +
+  theme_classic() +
+  scale_fill_viridis_d() +
+  scale_color_viridis_d() +
+  theme(text = element_text(family="serif"),
+        legend.position= "bottom", 
+        legend.title = element_text(size=9),
+        legend.text = element_text(size=7),
+        legend.key.size = unit(.5, "cm")) +
+        labs(title = "Models 1 & 4 fit to data", 
+         y = "Recruits (thousands)", 
+         x = "Spawners (thousands)")
+
+ggsave(here("output/pub_figs/fig3.png"), 
+       plot = p,
+       width = 5.61, 
+       height = 4.22, 
+       dpi = 300)
+
+print(p)
+
+```
+# Figure ?  
+
+```{r fig ?}
+p <- ggplot(filter(all_draws, model == "m1"), aes(region, log_a)) +
+  geom_violin(fill = "grey",
+              draw_quantiles = 0.5) +
+  labs(title = "Regional Productuvity in Model 1", 
+        y = "log(alpha)", 
+       x = "Region") +
+  theme_bw() +
+  theme(legend.position = "bottom", 
+        text = element_text(family="serif")) 
+
+p
+```
+
+# Supplements  
+
+## Posterior distributions  
+### $S_{MSY}$ posteriors  
+```{r Smsy plot}
+j <- 1 #facet index helper
+
+#make and print plots
+for(i in 1:pages){
+  sub_dat <- filter(all_draws, 
+                    pop %in% str_to_title(unique(SR_data$pop))[j:(j+(max_facets-1))])
+  
+  p <- ggplot(sub_dat, 
+              aes(model, log(Smsy))) +
+    geom_violin(fill = "grey", 
+                draw_quantiles = 0.5) +
+    ggh4x::facet_wrap2(vars(pop), 
+                       nrow=(max_facets/4), 
+                       ncol=(max_facets/4), 
+                       trim_blank=FALSE,
+                       scales = "free_y") +
+    labs(title = paste0("Smsy estimate (", i, " of ", pages, ")"), 
+         y = "log(Spawners)", 
+         x = "model") +
+    theme_bw() +
+  guides(fill="none")
+  
+  print(p)
+  
+  j <- j + max_facets
+}
+```
+
+### log($\alpha$) posteriors
+```{r a plots}
+j <- 1 #facet index helper
+
+#make and print plots
+for(i in 1:pages){
+  sub_dat <- filter(all_draws, 
+                    pop %in% str_to_title(unique(SR_data$pop))[j:(j+(max_facets-1))])
+  
+  p <- ggplot(sub_dat, 
+              aes(model, log_a)) +
+    geom_violin(fill = "grey",
+                draw_quantiles = 0.5) +
+    ggh4x::facet_wrap2(vars(pop), 
+                       nrow=(max_facets/4), 
+                       ncol=(max_facets/4), 
+                       trim_blank=FALSE,
+                       scales = "free_y") +
+    labs(title = paste0("log(a) estimate (", i, " of ", pages, ")"), 
+         y = "log_alpha", 
+         x = "model") +
+    theme_bw()+
+  guides(fill="none")
+  
+  print(p)
+  
+  j <- j + max_facets
+}
+```
+
+### $\beta$ posteriors  
+```{r b plots}
+j <- 1 #facet index helper
+
+#make and print plots
+for(i in 1:pages){
+  sub_dat <- filter(all_draws, 
+                    pop %in% str_to_title(unique(SR_data$pop))[j:(j+(max_facets-1))])
+  
+  p <- ggplot(sub_dat, 
+              aes(model, b)) +
+    geom_violin(fill = "grey",
+              draw_quantiles = 0.5) +
+    ggh4x::facet_wrap2(vars(pop), 
+                       nrow=(max_facets/4), 
+                       ncol=(max_facets/4), 
+                       trim_blank=FALSE,
+                       scales = "free_y") +
+    scale_fill_viridis_d() +
+    labs(title = paste0("beta estimate (", i, " of ", pages, ")"), 
+         y = "beta", 
+         x = "model") +
+    theme_bw()+
+  guides(fill="none")
+  
+  print(p)
+  
+  j <- j + max_facets
+}
+```
+
+### Models 1 and 4 fit to data
+
+```{r m1 & m4 to data}
+fig_preds <- NULL
+fig_data <- NULL
+
+for(i in unique(all_draws$pop)){
+  for(j in c("m1", "m4")){
+    sub_draw <- filter(all_draws, pop==i, model==j)
+    sub_dat <- filter(SR_data, pop==gsub(" ", "-", tolower(i)))
+    
+    max_samples <- nrow(sub_draw)
+    spw <- seq(0, max(sub_dat$exp_spawn), length.out = 100)
+    SR_pred <- matrix(NA, 100, max_samples)
+    
+    for(k in 1:max_samples){
+      r <- sample(seq(1,max_samples), 1, replace=TRUE)
+      log_a <- sub_draw$log_a[r]
+      b <- sub_draw$b[r]
+      SR_pred[,k] <- (exp(log_a)*spw*exp(-b*spw))
+    }
+    SR_pred <- cbind(spw,t(apply(SR_pred,c(1),quantile,probs=c(0.05,0.5,0.95),na.rm=T))) |>
+      as.data.frame() |>
+      round(2) |>
+      mutate(pop = i, 
+             model = j)
+    
+    fig_preds <- bind_rows(fig_preds, SR_pred)
+    
+    fig_data <- bind_rows(fig_data, sub_dat)
+  }
+}
+
+colnames(fig_preds) <- c("Spawn", "Rec_lwr", "Rec_med", "Rec_upr", "pop", "model")
+
+fig_data <- mutate(fig_data, pop = gsub("-", " ", str_to_title(pop))) 
+
+j <- 1
+max_facets <- 8
+
+pdf(here(paste0("data_plots_", Sys.Date(), ".pdf")), onefile = TRUE)
+
+pages <- ceiling(length(unique(SR_data$pop))/max_facets)
+for(i in 1:pages){
+  sub_data <- filter(fig_data, 
+                    pop %in% unique(fig_preds$pop)[j:(j+(max_facets-1))])
+
+  sub_preds <- filter(fig_preds, 
+                    pop %in% unique(fig_preds$pop)[j:(j+(max_facets-1))])
+  
+  p <- ggplot() +
+    
+    geom_ribbon(data = sub_preds, aes(x = Spawn/1000, ymin = Rec_lwr/1000, ymax = Rec_upr/1000, 
+                                        fill = model, color = model), alpha=0.5) +
+    geom_line(data = sub_preds, aes(x = Spawn/1000, y = Rec_med/1000, color=model), size = 1) +
+    geom_point(data = sub_data, aes(x=exp_spawn/1000, y=total_rec/1000)) +
+    ggh4x::facet_wrap2(vars(pop), 
+                       nrow=2, 
+                       ncol=4, 
+                       trim_blank=FALSE, 
+                       scales = "free") +
+    theme_classic() +
+    scale_fill_viridis_d() +
+    scale_color_viridis_d() +
+    theme(text = element_text(family="serif"),
+          legend.position= "bottom", 
+          legend.title = element_text(size=9),
+          legend.text = element_text(size=7),
+          legend.key.size = unit(.5, "cm")) +
+        labs(title = paste0("S-R models m1 & m4 (", i, " of ", pages, ")"), 
+         y = "Recruits (thousands)", 
+         x = "Spawners (thousands)")
+
+  print(p)
+  j <- j + max_facets
+  
+}
+dev.off()
+```

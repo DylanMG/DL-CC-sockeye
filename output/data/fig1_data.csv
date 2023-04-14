@@ -1,0 +1,70 @@
+"pop","m2b","m4","perc_diff_CV","diff_CV","diff_CV_percentage","region","est_origin","water_clarity","years","sr_pairs"
+"Alastair",0.11,0.11,0,0,0,"coast.fjord","empirical","clear","1978",49
+"Asitika",17.39,8.28,52.39,9.11,911,"interior","PR_modeled","clear",NA,4
+"Atnarko",31.85,2.54,92.03,29.31,2931,"interior","empirical","clear",NA,38
+"Awun",0.11,0.11,0,0,0,"low.coastal","PR_modeled","stained",NA,44
+"Azuklotz",15.77,0.31,98.03,15.46,1546,"interior","empirical","clear","2003",20
+"Babine",6.12,1.7,72.22,4.42,442,"interior","empirical","clear","1994-1995",46
+"Banks",0.17,0.13,23.53,0.04,4,"low.coastal","empirical","stained",NA,27
+"Bear",0.14,0.23,-64.29,-0.09,-9,"interior","empirical","clear","1978, 2003",21
+"Bloomfield",0.28,0.18,35.71,0.1,10,"low.coastal","empirical","stained","2006",36
+"Bonilla",0.21,0.18,14.29,0.03,3,"low.coastal","empirical","stained","1979",37
+"Borrowman",16.85,1.62,90.39,15.23,1523,"low.coastal","PR_modeled","stained",NA,21
+"Bowser",43.44,0.22,99.49,43.22,4322,"interior","empirical","glacial","2008",17
+"Canoona",0.22,0.17,22.73,0.05,5,"low.coastal","empirical","stained","2004",31
+"Curtis Inlet",0.21,0.19,9.52,0.02,2,"low.coastal","empirical","stained","1979",32
+"Damdochax",15.22,0.71,95.34,14.51,1451,"interior","empirical","clear","2008",22
+"Devon",0.12,0.11,8.33,0.01,1,"low.coastal","empirical","stained","1979",45
+"Evelyn",36.65,0.27,99.26,36.38,3638,"low.coastal","empirical","stained","2001",38
+"Fairfax",16.47,0.2,98.79,16.27,1627,"low.coastal","PR_modeled","stained",NA,22
+"Fred Wright",17.2,0.83,95.17,16.37,1637,"interior","empirical","clear","1978",18
+"Freeda Lakes",50.06,1.89,96.22,48.17,4817,"coast.fjord","PR_modeled","stained",NA,15
+"Hartley Bay",9.75,3.49,64.21,6.26,626,"low.coastal","empirical","stained","2005",28
+"Hauyat",44.16,19.47,55.91,24.69,2469,"low.coastal","PR_modeled","stained",NA,25
+"Johanson",25.48,3.36,86.81,22.12,2212,"interior","empirical","clear","1994",7
+"Johnston",0.23,0.2,13.04,0.03,3,"coast.fjord","empirical","clear","2005",11
+"Kadjusdis",21.95,0.87,96.04,21.08,2108,"low.coastal","PR_modeled","stained",NA,32
+"Kainet",0.21,0.16,23.81,0.05,5,"coast.fjord","PR_modeled","clear",NA,34
+"Kdelmashan",25.56,0.23,99.1,25.33,2533,"low.coastal","PR_modeled","stained",NA,19
+"Keecha",0.36,0.17,52.78,0.19,19,"low.coastal","empirical","stained","2004",19
+"Keswar",0.55,0.16,70.91,0.39,39,"low.coastal","PR_modeled","stained",NA,10
+"Kimsquit",55.39,0.5,99.1,54.89,5489,"coast.fjord","PR_modeled","clear",NA,22
+"Kisameet",20.16,0.22,98.91,19.94,1994,"low.coastal","PR_modeled","stained",NA,7
+"Kitkiata",25.13,0.89,96.46,24.24,2424,"coast.fjord","empirical","stained","2005",25
+"Kitlope",0.22,0.2,9.09,0.02,2,"coast.fjord","empirical","glacial","1978",46
+"Kitsumkalum",38.61,0.5,98.7,38.11,3811,"coast.fjord","empirical","glacial","1994",49
+"Kitwancool",13.15,8.51,35.29,4.64,464,"interior","empirical","clear","1995, 2003",12
+"Koeye",15.63,0.72,95.39,14.91,1491,"low.coastal","empirical","stained","2006",26
+"Kooryet",0.48,0.19,60.42,0.29,29,"low.coastal","empirical","stained","2004",24
+"Kwakwa",21.37,15.64,26.81,5.73,573,"low.coastal","PR_modeled","stained",NA,33
+"Lakelse",0.13,0.12,7.69,0.01,1,"coast.fjord","empirical","clear","1994, 2003",44
+"Long",0.18,0.16,11.11,0.02,2,"coast.fjord","empirical","stained","1980",56
+"Lowe",0.14,0.15,-7.14,-0.00999999999999998,-0.999999999999998,"coast.fjord","empirical","stained","1978",35
+"Marian Eden",0.16,0.15,6.25,0.01,1,"low.coastal","PR_modeled","stained",NA,35
+"Mary Cove",21.13,7.16,66.11,13.97,1397,"low.coastal","PR_modeled","stained",NA,18
+"Mathers",16.34,1.86,88.62,14.48,1448,"low.coastal","PR_modeled","stained",NA,10
+"Mcdonell",0.1,0.1,0,0,0,"interior","empirical","clear","2001",36
+"Mcloughlin",0.3,0.17,43.33,0.13,13,"low.coastal","PR_modeled","stained",NA,30
+"Mercer",32.66,0.22,99.33,32.44,3244,"low.coastal","PR_modeled","stained",NA,29
+"Meziadin",8.03,0.42,94.77,7.61,761,"interior","empirical","clear","1978, 79, 2008",31
+"Mikado",1.04,0.13,87.5,0.91,91,"low.coastal","empirical","stained",NA,40
+"Morice",0.25,1.33,-432,-1.08,-108,"interior","empirical","clear","1980, 2001",42
+"Morrison",0.14,0.13,7.14,0.01,1,"interior","empirical","stained","1995",52
+"Motase",25.54,1.06,95.85,24.48,2448,"interior","empirical","glacial","2003",15
+"Namu",28.3,0.24,99.15,28.06,2806,"low.coastal","empirical","stained","2006",27
+"Owikeno",3.68,1.47,60.05,2.21,221,"coast.fjord","empirical","glacial",NA,56
+"Port John",23.8,0.27,98.87,23.53,2353,"low.coastal","PR_modeled","stained",NA,13
+"Price",1.57,0.19,87.9,1.38,138,"low.coastal","empirical","stained","2006",30
+"Prudhomme",0.15,0.13,13.33,0.02,2,"low.coastal","PR_modeled","stained",NA,51
+"Shawaltan",0.37,0.16,56.76,0.21,21,"low.coastal","PR_modeled","stained",NA,41
+"Sheneeza",34.23,0.31,99.09,33.92,3392,"low.coastal","PR_modeled","stained",NA,17
+"Skidegate",0.14,0.12,14.29,0.02,2,"low.coastal","PR_modeled","stained",NA,51
+"Slamgeesh",26.06,0.42,98.39,25.64,2564,"interior","both","clear","2001",13
+"Stephens",0.12,0.11,8.33,0.01,1,"interior","empirical","clear","2002",41
+"Sustut",14.89,3.67,75.35,11.22,1122,"low.coastal","empirical","stained","1994",7
+"Swan",21.2,4.81,77.31,16.39,1639,"interior","empirical","clear","1978, 2002",21
+"Tankeeah",13.25,1.02,92.3,12.23,1223,"low.coastal","empirical","stained",NA,36
+"Tuno East",14.98,3.97,73.5,11.01,1101,"low.coastal","PR_modeled","stained",NA,17
+"Tuno West",23.12,8.07,65.1,15.05,1505,"low.coastal","PR_modeled","stained",NA,11
+"Yakoun",0.21,0.17,19.05,0.04,4,"low.coastal","PR_modeled","stained",NA,45
+"Yeo",1,0.18,82,0.82,82,"low.coastal","PR_modeled","stained",NA,23
