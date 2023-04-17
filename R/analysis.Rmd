@@ -5,7 +5,7 @@ subtitle:  |
     | Paper analysis
 author: "W.I. Atlas, D.M. Glaser, B.M. Connors, C.A. Holt, D.T. Selbie, S. Cox-Rogers, C. Carr-Harris, E. Hertz, and J.W. Moore."
 knit: (function(inputFile, encoding) {
-  rmarkdown::render(inputFile, encoding = encoding, output_dir = "./output/html") })
+  rmarkdown::render(inputFile, encoding = encoding, output_dir = "../output/html") })
 output: 
   bookdown::html_document2:
     theme: cerulean
