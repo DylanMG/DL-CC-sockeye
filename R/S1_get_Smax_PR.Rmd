@@ -1,16 +1,26 @@
 ---
-title: "Supplement 1 - calculating SmaxPR and SDs"
-author: "Dylan M. Glaser"
-date: '`r format(Sys.time(), "%d %B, %Y")`'
+title: "Combining hierarchical models and habitat data improves assessment of data limited salmon stocks "
+subtitle:  |
+    | Marine and Coastal Fisheries
+    | Supplement 2: Calculating $S_{MAX_{PR}}$ and SDs
+author: "W.I. Atlas, D.M. Glaser, B.M. Connors, C.A. Holt, D.T. Selbie, S. Cox-Rogers, C. Carr-Harris, E. Hertz, and J.W. Moore."
 knit: (function(inputFile, encoding) {
-  rmarkdown::render(inputFile, encoding = encoding, output_dir = "../output") })
+  rmarkdown::render(inputFile, encoding = encoding, output_dir = "./output/html") })
 output: 
-  html_document:
-    smooth_scroll: yes
-    theme: journal
-    highlight: zenburn
-    toc: TRUE
-    toc_float: yes
+  bookdown::html_document2:
+    theme: cerulean
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: false
+editor_options: 
+  chunk_output_type: console
+  markdown: 
+    wrap: sentence
+#bibliography: references.bib
+#csl: "https://raw.githubusercontent.com/citation-style-language/styles/master/canadian-journal-of-fisheries-and-aquatic-sciences.csl"
+link-citations: true
+always_allow_html: yes
 ---
 
 ```{r r_pkgs_setup, include = FALSE}
@@ -23,24 +33,24 @@ knitr::opts_chunk$set(echo = FALSE,
 ```
 
 # $S_{MAX_{PR}}$
-Here we estimate maximum spawners based on photosynthetic rates ($S_{MAX_{PR}}$) for 96 lakes without empirical estimates of mean daily photosynthetic rate ($PR_{MEAN}$) in [Atlas et al. 2020](https://aslopubs.onlinelibrary.wiley.com/doi/10.1002/lno.11448) (hereon the L&O paper). We use table S5 from the supplementary materials reported in the bottom of the previous link to calculate $S_{MAX_{PR}}$ estimates then aggregate them into sockeye populations (since a single population can use multiple lakes for rearing) to be re-analysed from a preprint (heron the [BioRxiv paper](https://www.biorxiv.org/content/10.1101/2021.03.22.436497v1)).  
+Here we estimate maximum spawners based on photosynthetic rates ($S_{MAX_{PR}}$) for 96 lakes without empirical estimates of mean daily photosynthetic rate ($PR_{MEAN}$) in [Atlas et al. 2020](https://aslopubs.onlinelibrary.wiley.com/doi/10.1002/lno.11448). We use table S5 from the supplementary materials reported in the bottom of the previous link to calculate $S_{MAX_{PR}}$ estimates then aggregate them into sockeye populations (since a single population can use multiple lakes for rearing) to be re-analysed from a preprint (heron the [BioRxiv paper](https://www.biorxiv.org/content/10.1101/2021.03.22.436497v1)).  
 
-$S_{MAX_{PR}}$ estimates will ultimately be transformed and used as priors on the beta parameter in a Ricker stock-recruit model. We use empirical $S_{MAX_{PR}}$ estimates from table S1 from the L&O paper, then use modeled estimates of $S_{MAX_{PR}}$ calculated here as priors. We assign error around $S_{MAX_{PR}}$ based on lake clarity categories and $PR_{MEAN}$ estimates shown in figure 3a of the L&O paper.  
+$S_{MAX_{PR}}$ estimates will ultimately be transformed and used as priors on the beta parameter in a Ricker stock-recruit model. We use empirical $S_{MAX_{PR}}$ estimates from table S1 from the Atlas et al. 2020, then use modeled estimates of $S_{MAX_{PR}}$ calculated here as priors. We assign error around $S_{MAX_{PR}}$ based on lake clarity categories and $PR_{MEAN}$ estimates shown in figure 3a of Atlas et al. 2020.  
 
-In an ideal world, we'd have empirical estimates of $S_{MAX_{PR}}$ error that describe sampling error within lakes when estimating $PR_{MEAN}$, but that doesn't exist. The L&O figure S3 highlights the variability in empirical $PR_{MEAN}$ by water clarity group. Since water clarity was selected in all top models in the L&O paper, and $PR_{MEAN}$ estimates aren't yet scaled up to lake size, we feel using the variability in Figure 3a strikes a balance between overstepping inference and simplicity.  
+In an ideal world, we'd have empirical estimates of $S_{MAX_{PR}}$ error that describe sampling error within lakes when calculating $PR_{MEAN}$, but that doesn't exist. Atlas et al. 2020 figure S3 highlights the variability in empirical $PR_{MEAN}$ by water clarity group. Since water clarity was selected in all top models in Atlas et al. 2020, and $PR_{MEAN}$ estimates aren't yet scaled up to lake size, we feel using the variability in Figure 3a strikes a balance between overstepping inference and simplicity.  
 
 ## The data  
 
 ### PR and PR derived variables  
-There's several levels of PR variables we need to keep track of, that are described on p. 2207 of the L&O paper:  
+There's several levels of PR variables we need to keep track of, that are described on Atlas et al. 2020 p.2207:  
 - $PR_{MEAN}$ is the mean daily photosynthetic rate, which is modeled for 96 lakes and empirically estimated via field collection and lab analysis for 61 lakes. This is measured in mg of carbon in a cubic meter per day.   
-- $PR_{TOTAL}$ is an annual measure of PR which is defined by $PR_{MEAN}$ , lake surface area in m^2, and the growing season lake (183 days). It's in tons of carbon per year units.  
+- $PR_{TOTAL}$ is an annual measure of PR which is defined by $PR_{MEAN}$, lake surface area in m^2, and the growing season lake (183 days). It's in tons of carbon per year units.  
 - $S_{MAX_{PR}}$ is maximum spawner density estimated by multiplying $PR_{TOTAL}$ by 187(spawner tons/C). The units are numbers of fish.  
 
 ### The tables:  
 - Table S1 shows empirical estimates of $PR_{MEAN}$, calculated $S_{MAX_{PR}}$, various lake and sampling characteristics, and citations of what studies they came from.  
 - Table S5 is modeled estimates of $PR_{MEAN}$ and CLs for 96 lakes without empirical estimates of LakePR. We'll use these estimates to eventually calculate modeled estimates of $S_{MAX_{PR}}$ and SDs.  
-- `lake_data` is a table that was used in the analysis of 70 sockeye populations in the BioRxiv paper, which corresponds to the file `lakePR_final.txt` Brendan Connors gave me (Dylan) when I started playing with this analysis.  
+- `lake_data` is a table that was used in the analysis of 69 sockeye populations in the BioRxiv paper, which corresponds to the file `lakePR_final.txt` Brendan Connors gave me (Dylan) when I started playing with this analysis.  
 
     
 ## Data collation  
@@ -48,7 +58,7 @@ There's several levels of PR variables we need to keep track of, that are descri
 ### Load and transform data  
 We'll make a big table of all the data we need from the L&O paper by combining tables S1 and S5. The $PR_{MEAN}$ values in table S5 are the mean of $S_{MAX_{PR}}$ estimates from the top 4 models with the lowest RMSE.   
 ```{r load-L&O-data, echo = TRUE}
-lnos1_skinny <- read.csv(here("data_input/lno_s1.csv"), header = TRUE) |> 
+lnos1_skinny <- read.csv(here("data/lno_s1.csv"), header = TRUE) |> 
   mutate(lake = tolower(gsub(" Lake| Lakes", "", Lake)),
          SmaxPR = as.numeric(gsub(",", "", SMAX_PR))) |>
   mutate(lake = tolower(gsub(" ", "_", lake)), 
@@ -56,7 +66,7 @@ lnos1_skinny <- read.csv(here("data_input/lno_s1.csv"), header = TRUE) |>
          est_origin = "empirical") |>
   select(lake, est_origin, lake_area_hec, SmaxPR)
 
-lnos5 <- read.csv(here("data_input/lno_s5.csv"), header = TRUE) |>
+lnos5 <- read.csv(here("data/lno_s5.csv"), header = TRUE) |>
   transmute(lake = tolower(gsub(" ", "_", Lake)),
             PR_mean = as.numeric(PRmean)) |>
   mutate(est_origin = "PR_modeled")
@@ -68,7 +78,7 @@ all_lakes <- bind_rows(lnos1_skinny, lnos5) |>
 
 Now we'll load the sockeye data I was originally given from the BioRxiv paper. This is what we'll compare to later.    
 ```{r load-SK-data}
-sockeye_pops <- read.table(here("data_input/lakePR_final2.txt"), header = TRUE) |>
+sockeye_pops <- read.table(here("data/lakePR_final2.txt"), header = TRUE) |>
   rename(lake = watershed, #for now because we'll join on this later
          original_SmaxPR = SmaxPR, 
          original_PR_mean = PR_mean) |>
@@ -122,7 +132,8 @@ print(unique(sockeye_pops$lake))
 ```
 This was validated by Will Atlas.  
 
-### Aggregate lakes into pops 
+### Aggregate lakes into pops  
+
 Now that we've renamed these lakes to be their appropriate populations, we have multiple rows we need to collapse via `group_by()` with the same names that correspond to populations. We'll take the average $PR_{MEAN}$ so we can calculate $S_{MAX_{PR}}$ later for pops without empirical measurements.  
 ```{r collapse, echo = TRUE}
 all_lakes <- all_lakes |>
@@ -134,7 +145,9 @@ all_lakes <- all_lakes |>
             est_origin = est_origin) |> 
   distinct()
 ```
-### Calculate $S_{MAX_{PR}}$
+
+### Calculate $S_{MAX_{PR}}$  
+
 Then join the lake data to the sockeye population data (because we need `lake_area_Hec`) and calculate $S_{MAX_{PR}}$ for the populations that are based on estimates of $PR_{MEAN}$ (i.e. ones that don't have $S_{MAX_{PR}}$ estimated yet).  
 ```{r join-compute, echo = TRUE}
 sockeye_pops <- left_join(sockeye_pops, all_lakes, by = "lake") |>
@@ -158,7 +171,7 @@ sockeye_pops |>
 We'll read in the data used to create figure 3a in the L&O paper, which is $PR_{MEAN}$ by water clarity group for the 61 lakes with measured PR_mean.  
 This is a table I generated from Will's analysis he sent me in `LakePR_analysis_FINAL2.R`.     
 ```{r read-SEs}
-water_SDs <- read.table(file = here("data_input/water_SDs.txt"), header = TRUE) |>
+water_SDs <- read.table(file = here("data/water_SDs.txt"), header = TRUE) |>
   rename(water_clarity = water)
 
 print(water_SDs)
