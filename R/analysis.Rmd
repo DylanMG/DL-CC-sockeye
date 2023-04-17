@@ -662,3 +662,53 @@ ggsave(here("output/pub_figs/fig_unk.png"),
 
 print(p)
 ```
+
+```{r other fig, fig.width=5.62, fig.height=4.215, dpi= 300}
+m1_draws <- rstan:::.make_plot_data(m1, pars = "log_a_pop")$samp %>%
+  rename(m1_draw = value)
+
+m2b_draws <- rstan:::.make_plot_data(m2b, pars = "log_a_pop")$samp %>%
+  rename(m2b_draw = value)
+
+region_helper <-cbind(parameter = unique(m2b_draws$parameter), 
+                       distinct(select(SR_data, pop, region)))
+
+log_a_draws <- left_join(m2b_draws, region_helper, by = "parameter") %>%
+  left_join(., m1_draws) 
+
+sub_log_a <- filter(log_a_draws, pop %in% c("atnarko", "owikeno", "koeye", "long", "canoona", "damdochax")) %>%
+  pivot_longer(cols = c('m1_draw', 'm2b_draw'), names_to= 'draw_type', values_to = 'draw') %>%
+  mutate(region = ifelse(draw_type == "m1_draw", NA, region))
+
+p1 <- ggplot(log_a_draws, aes(m1_draw, group=pop)) +
+  geom_density() +
+  theme_classic() +
+  theme(axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) +
+  labs(title="Single population", x= NULL, y=NULL) +
+  coord_cartesian(xlim=c(0,3))
+p2 <- ggplot(log_a_draws, aes(m2b_draw, group=pop, color=region)) +
+  geom_density() +
+  theme_classic() +
+  theme(axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        legend.position = "bottom") +
+  scale_color_viridis_d(name = "Region", 
+                       labels = c("coastal fjord", "interior", "low coastal")) +
+  labs(title = "Hierarchical", x=NULL, y=NULL) +
+  coord_cartesian(xlim=c(0,3))
+
+p3 <- ggplot() +
+  geom_density(data = filter(sub_log_a, draw_type == "m2b_draw"),
+               aes(draw, group=draw_type, color=region)) +
+  geom_density(data = filter(sub_log_a, draw_type == "m1_draw"), 
+               aes(draw, group=draw_type, color="black")) +
+  facet_grid(pop~.) +
+  theme_classic() +
+  theme(axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) +
+  scale_color_viridis_d() +
+  guides(color="none")+
+  labs(X=NULL,y=NULL)
+(p1/p2)|p3
+```
