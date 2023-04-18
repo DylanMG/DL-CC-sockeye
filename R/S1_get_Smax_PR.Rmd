@@ -2,7 +2,7 @@
 title: "Combining hierarchical models and habitat data improves assessment of data limited salmon stocks "
 subtitle:  |
     | Marine and Coastal Fisheries
-    | Supplement 2: Calculating $S_{MAX_{PR}}$ and SDs
+    | Supplement 1: Calculating $S_{MAX_{PR}}$ and SDs
 author: "W.I. Atlas, D.M. Glaser, B.M. Connors, C.A. Holt, D.T. Selbie, S. Cox-Rogers, C. Carr-Harris, E. Hertz, and J.W. Moore."
 knit: (function(inputFile, encoding) {
   rmarkdown::render(inputFile, encoding = encoding, output_dir = "../output/html") })
