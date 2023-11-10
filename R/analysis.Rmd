@@ -454,9 +454,163 @@ write.csv(Smsy_bias, here("output/data/Smsy_bias.csv"))
 # Figures  
 
 ### Figure 1  
-Difference in CV since CVs are standardized
 
 ```{r fig1, fig.width=5.62, fig.height=4.215, dpi= 300}
+m1_draws <- rstan:::.make_plot_data(m1, pars = "log_a_pop")$samp %>%
+  rename(m1_draw = value)
+
+m2b_draws <- rstan:::.make_plot_data(m2b, pars = "log_a_pop")$samp %>%
+  rename(m2b_draw = value)
+
+region_helper <-cbind(parameter = unique(m2b_draws$parameter), 
+                       distinct(select(SR_data, pop, region)))
+
+log_a_draws <- left_join(m2b_draws, region_helper, by = "parameter") %>%
+  left_join(., m1_draws)
+
+sub_log_a <- filter(log_a_draws, pop %in% c("atnarko", "owikeno", "koeye", "long", 
+                                            "canoona", "damdochax")) %>%
+  pivot_longer(cols = c('m1_draw', 'm2b_draw'), 
+               names_to= 'draw_type', values_to = 'draw') %>%
+  mutate(region = ifelse(draw_type == "m1_draw", NA, region), 
+         pop = str_to_title(pop))
+
+p1 <- ggplot(log_a_draws, aes(m1_draw, group=pop)) +
+  geom_density() +
+  theme_classic() +
+  theme(axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) +
+  labs(title="Single population", x= NULL, y=NULL) +
+  coord_cartesian(xlim=c(0,3))
+
+p2 <- ggplot(log_a_draws, aes(m2b_draw, group=pop, color=region)) +
+  geom_density(key_glyph = "point") +
+  theme_classic() +
+  theme(axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(), 
+        legend.position = "bottom") +
+  scale_color_viridis_d(name = "Region", 
+                       labels = c("Coastal Fjord", "Interior", "Low Coastal")) +
+  labs(title = "Hierarchical", x=NULL, y=NULL) +
+  coord_cartesian(xlim=c(0,3))
+
+p3 <- ggplot() +
+  geom_density(data = filter(sub_log_a, draw_type == "m2b_draw"),
+               aes(draw, group=draw_type, color=region)) +
+  geom_density(data = filter(sub_log_a, draw_type == "m1_draw"), 
+               aes(draw, group=draw_type), color="black") + 
+  facet_grid(pop~.) +
+  theme_classic() +
+  theme(strip.text.y = element_text(size = 5), #shrink facet text
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) +
+  scale_color_viridis_d() +
+  guides(color="none") + 
+  labs(x = NULL, y = NULL)
+
+#hack to get the legend shared, centered, horiziontal among plots. see
+  #https://stackoverflow.com/questions/10032513/ggplot2-legend-to-bottom-and-horizontal
+design <- " 
+1133
+1133
+1133
+1133
+1133
+2233
+2233
+2233
+2233
+2233
+4444
+"  
+p <- p1+ p2 + p3 +
+  guide_area()+ plot_layout(design=design, guides = "collect") 
+
+print(p)
+
+ggsave(here("output/pub_figs/fig1.png"), 
+       plot = p,
+       width = 5.61, 
+       height = 4.22, 
+       dpi = 300)
+```
+
+### Figure 2   
+
+```{r fig2 wrangle}
+index_df <- cbind(pop_data$pop, as.numeric(as.factor(pop_data$pop))) #helper df for the loop 
+
+lakes <- c("Babine", "Long", "Meziadin", "Owikeno", "Asitika", "Bear", "Bowser", "Morice")
+
+fig2_preds <- NULL
+fig2_data <- NULL
+
+for(i in unique(lakes)){
+  for(j in c("m1", "m4")){
+    sub_draw <- filter(all_draws, pop==i, model==j)
+    sub_dat <- filter(SR_data, pop==tolower(i))
+    
+    max_samples <- nrow(sub_draw)
+    spw <- seq(0, max(sub_dat$exp_spawn), length.out = 100)
+    SR_pred <- matrix(NA, 100, max_samples)
+    
+    for(k in 1:max_samples){
+      r <- sample(seq(1,max_samples), 1, replace=TRUE)
+      log_a <- sub_draw$log_a[r]
+      b <- sub_draw$b[r]
+      SR_pred[,k] <- (exp(log_a)*spw*exp(-b*spw))
+    }
+    SR_pred <- cbind(spw,t(apply(SR_pred,c(1),quantile,probs=c(0.05,0.5,0.95),na.rm=T))) |>
+      as.data.frame() |>
+      round(2) |>
+      mutate(pop = i, 
+             model = j)
+    
+    fig2_preds <- bind_rows(SR_pred, fig2_preds)
+    
+    fig2_data <- bind_rows(sub_dat, fig2_data)
+  }
+}
+
+colnames(fig2_preds) <- c("Spawn", "Rec_lwr", "Rec_med", "Rec_upr", "pop", "model")
+
+fig2_preds <- fig2_preds |>
+  mutate(pop = factor(pop, levels = lakes))
+
+fig2_data <- fig2_data |>
+  mutate(pop = factor(str_to_title(pop), levels = lakes))
+
+p <- ggplot() +
+  geom_ribbon(data = fig2_preds, aes(x = Spawn/1000, ymin = Rec_lwr/1000, ymax = Rec_upr/1000, 
+                                      fill = model, color = model), alpha=0.5) +
+  geom_line(data = fig2_preds, aes(x = Spawn/1000, y = Rec_med/1000, color=model), size = 1) +
+  geom_point(data = fig2_data, aes(x=exp_spawn/1000, y=total_rec/1000)) +
+  facet_wrap(~pop, scales="free", nrow=2) +
+  theme_classic() +
+  scale_fill_viridis_d(name = "Model", 
+                       labels = c("1", "4")) +
+  scale_color_viridis_d() +
+  theme(text = element_text(family="serif"),
+        legend.position= "bottom", 
+        legend.title = element_text(size=9),
+        legend.text = element_text(size=7),
+        legend.key.size = unit(.5, "cm")) +
+        labs(y = "Recruits (thousands)", x = "Spawners (thousands)") +
+  guides(color="none")
+
+ggsave(here("output/pub_figs/fig2.png"), 
+       plot = p,
+       width = 5.61, 
+       height = 4.22, 
+       dpi = 300)
+
+print(p)
+```
+
+### Figure 3  
+Difference in CV since CVs are standardized
+
+```{r fig3, fig.width=5.62, fig.height=4.215, dpi= 300}
 p1 <- ggplot(fig1_data,aes(sr_pairs, diff_CV)) +
   theme_classic() +
   geom_point(aes(color = region)) +
@@ -527,19 +681,20 @@ pw <- ((p1/p3)|(p2/p4))
 p <- gridExtra::grid.arrange(patchworkGrob(pw), 
                         left = textGrob(expression("Reduction in S"["MSY"]*" uncertainty (CV)"), 
                                         gp = gpar(fontfamily = "serif"), rot=90))
+print(p)
 #^ from https://statisticsglobe.com/add-subscript-and-superscript-to-plot-in-r example 3
-ggsave(here("output/pub_figs/fig1.png"), 
+ggsave(here("output/pub_figs/fig3.png"), 
        plot = p,
        width = 5.61, 
        height = 4.22, 
        dpi = 300)
 ```
 
-### Figure 2  
-$S_{MSY}$ posterior densities across varying amounts of data in 2 data rich populations.  
+### Figure 4  
+$S_{MSY}$ posterior densities across varying amounts of data in data rich populations.  
 
 Percent differences (i.e. bias) relative to the full data m4 median.  
-```{r fig 2, fig.width=5.62, fig.height=4.215, dpi= 300}
+```{r fig 4, fig.width=5.62, fig.height=4.215, dpi= 300}
 p <- ggplot(Smsy_bias, aes(n_data, perc_diff_Smsy))+
    geom_violin(fill = "grey",
               draw_quantiles = 0.5) +
@@ -555,89 +710,13 @@ p <- ggplot(Smsy_bias, aes(n_data, perc_diff_Smsy))+
         text = element_text(family="serif")) +
   guides(fill="none")
 
-ggsave(here("output/pub_figs/fig2.png"), 
+ggsave(here("output/pub_figs/fig4.png"), 
        plot = p,
        width = 5.61, 
        height = 4.22, 
        dpi = 300)
 
 print(p)
-```
-
-### Figure 3   
-
-```{r fig 3 wrangle}
-index_df <- cbind(pop_data$pop, as.numeric(as.factor(pop_data$pop))) #helper df for the loop 
-
-lakes <- c("Babine", "Long", "Meziadin", "Owikeno", "Asitika", "Bear", "Bowser", "Morice")
-
-fig3_preds <- NULL
-fig3_data <- NULL
-
-for(i in unique(lakes)){
-  for(j in c("m1", "m4")){
-    sub_draw <- filter(all_draws, pop==i, model==j)
-    sub_dat <- filter(SR_data, pop==tolower(i))
-    
-    max_samples <- nrow(sub_draw)
-    spw <- seq(0, max(sub_dat$exp_spawn), length.out = 100)
-    SR_pred <- matrix(NA, 100, max_samples)
-    
-    for(k in 1:max_samples){
-      r <- sample(seq(1,max_samples), 1, replace=TRUE)
-      log_a <- sub_draw$log_a[r]
-      b <- sub_draw$b[r]
-      SR_pred[,k] <- (exp(log_a)*spw*exp(-b*spw))
-    }
-    SR_pred <- cbind(spw,t(apply(SR_pred,c(1),quantile,probs=c(0.05,0.5,0.95),na.rm=T))) |>
-      as.data.frame() |>
-      round(2) |>
-      mutate(pop = i, 
-             model = j)
-    
-    fig3_preds <- bind_rows(SR_pred, fig3_preds)
-    
-    fig3_data <- bind_rows(sub_dat, fig3_data)
-  }
-}
-
-colnames(fig3_preds) <- c("Spawn", "Rec_lwr", "Rec_med", "Rec_upr", "pop", "model")
-
-fig3_preds <- fig3_preds |>
-  mutate(pop = factor(pop, levels = lakes))
-
-fig3_data <- fig3_data |>
-  mutate(pop = factor(str_to_title(pop), levels = lakes))
-
-p <- ggplot() +
-  geom_ribbon(data = fig3_preds, aes(x = Spawn/1000, ymin = Rec_lwr/1000, ymax = Rec_upr/1000, 
-                                      fill = model, color = model), alpha=0.5) +
-  geom_line(data = fig3_preds, aes(x = Spawn/1000, y = Rec_med/1000, color=model), size = 1) +
-  geom_point(data = fig3_data, aes(x=exp_spawn/1000, y=total_rec/1000)) +
-  facet_wrap(~pop, scales="free", nrow=2) +
-  theme_classic() +
-  scale_fill_viridis_d(name = "Model", 
-                       labels = c("1", "4")) +
-  scale_color_viridis_d() +
-  theme(text = element_text(family="serif"),
-        legend.position= "bottom", 
-        legend.title = element_text(size=9),
-        legend.text = element_text(size=7),
-        legend.key.size = unit(.5, "cm")) +
-        labs(title = "Models 1 & 4 fit to data", 
-         y = "Recruits (thousands)", 
-         x = "Spawners (thousands)") +
-  guides(color="none")
-
-
-ggsave(here("output/pub_figs/fig3.png"), 
-       plot = p,
-       width = 5.61, 
-       height = 4.22, 
-       dpi = 300)
-
-print(p)
-
 ```
 
 ### Figure ?  
@@ -661,54 +740,4 @@ ggsave(here("output/pub_figs/fig_unk.png"),
        dpi = 300)
 
 print(p)
-```
-
-```{r other fig, fig.width=5.62, fig.height=4.215, dpi= 300}
-m1_draws <- rstan:::.make_plot_data(m1, pars = "log_a_pop")$samp %>%
-  rename(m1_draw = value)
-
-m2b_draws <- rstan:::.make_plot_data(m2b, pars = "log_a_pop")$samp %>%
-  rename(m2b_draw = value)
-
-region_helper <-cbind(parameter = unique(m2b_draws$parameter), 
-                       distinct(select(SR_data, pop, region)))
-
-log_a_draws <- left_join(m2b_draws, region_helper, by = "parameter") %>%
-  left_join(., m1_draws) 
-
-sub_log_a <- filter(log_a_draws, pop %in% c("atnarko", "owikeno", "koeye", "long", "canoona", "damdochax")) %>%
-  pivot_longer(cols = c('m1_draw', 'm2b_draw'), names_to= 'draw_type', values_to = 'draw') %>%
-  mutate(region = ifelse(draw_type == "m1_draw", NA, region))
-
-p1 <- ggplot(log_a_draws, aes(m1_draw, group=pop)) +
-  geom_density() +
-  theme_classic() +
-  theme(axis.text.y=element_blank(),
-        axis.ticks.y=element_blank()) +
-  labs(title="Single population", x= NULL, y=NULL) +
-  coord_cartesian(xlim=c(0,3))
-p2 <- ggplot(log_a_draws, aes(m2b_draw, group=pop, color=region)) +
-  geom_density() +
-  theme_classic() +
-  theme(axis.text.y=element_blank(),
-        axis.ticks.y=element_blank(),
-        legend.position = "bottom") +
-  scale_color_viridis_d(name = "Region", 
-                       labels = c("coastal fjord", "interior", "low coastal")) +
-  labs(title = "Hierarchical", x=NULL, y=NULL) +
-  coord_cartesian(xlim=c(0,3))
-
-p3 <- ggplot() +
-  geom_density(data = filter(sub_log_a, draw_type == "m2b_draw"),
-               aes(draw, group=draw_type, color=region)) +
-  geom_density(data = filter(sub_log_a, draw_type == "m1_draw"), 
-               aes(draw, group=draw_type, color="black")) +
-  facet_grid(pop~.) +
-  theme_classic() +
-  theme(axis.text.y=element_blank(),
-        axis.ticks.y=element_blank()) +
-  scale_color_viridis_d() +
-  guides(color="none")+
-  labs(X=NULL,y=NULL)
-(p1/p2)|p3
 ```
