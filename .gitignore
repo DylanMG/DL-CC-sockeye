@@ -3,5 +3,4 @@
 .RData
 .Ruserdata
 output/model_fits
-output/plots
-misc/thinning_test/fits
+data
