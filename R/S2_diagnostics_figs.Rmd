@@ -93,7 +93,7 @@ colnames(pop_data) <- tolower(colnames(pop_data))
 
 ### Model 1  
 Fits for each population with uninformative priors. We won't plot any `mcmc_combo()` for this because there's too many parameters (3 per population, since all independent) to nicely visualize in a summary doc. You can fork the [code](https://github.com/DylanMG/sockeye-hab-SRR-Stan/blob/main/R/model_fitting_comparison.Rmd) and run `rstanarm::launch_shinystan()` to check  models if you want. Just look at the sigma as a check, then report max Rhats later.  
-```{r m1 diag}
+```{r m1-diag}
 mcmc_combo(fits[[1]], combo = c("dens_overlay", "trace"), 
            pars = c("sigma"), 
            gg_theme = legend_none())
@@ -103,7 +103,7 @@ mcmc_combo(fits[[1]], combo = c("dens_overlay", "trace"),
 ### Model 2a  
 Uninformative hierarchical $\alpha$  
 
-```{r m2a}
+```{r m2a-diag}
 mcmc_combo(fits[[2]], combo = c("dens_overlay", "trace"), 
            pars = c("log_a", "sd_a_pop", "sigma"), 
            gg_theme = legend_none())
@@ -113,7 +113,7 @@ mcmc_combo(fits[[2]], combo = c("dens_overlay", "trace"),
 
 ### Model 2b  
 Now we make $\alpha$ hierarchical to each biogeoclimatic zone; each of the 3 biogeoclimatic regions gets it *own* distribution that population level random effects are drawn from.  
-```{r m2b-diagnostics}
+```{r m2b-diag}
 mcmc_combo(fits[[3]], combo = c("dens_overlay", "trace"), 
            pars = c("log_a", "sd_a_pop", "sd_a_region", "sigma"), 
            gg_theme = legend_none())
@@ -126,7 +126,7 @@ mcmc_combo(fits[[3]], combo = c("dens_overlay", "trace"),
 
 ### Model 3  
 Models fit to each lake with an informative $\beta$ prior based on $S_{MAX_{PR}}$, and an uninformative prior for $\alpha$. We'll just plot the sigma here since everything else is independent. 
-```{r m3-diagnostics}
+```{r m3-diag}
 #need to find a better way to check the chains?
 mcmc_combo(fits[[4]], combo = c("dens_overlay", "trace"), 
            pars = c("sigma"), 
@@ -137,7 +137,7 @@ mcmc_combo(fits[[4]], combo = c("dens_overlay", "trace"),
 
 ### Model 4
 Informative, hierarchical $\alpha$ based on model performance in model 2 (i.e. grouped $\alpha$ or not), with informative priors on data based on Smax_PR.   
-```{r m4 diagnostics}
+```{r m4-diag}
 mcmc_combo(fits[[5]], combo = c("dens_overlay", "trace"), 
            pars = c("log_a", "sd_a_pop", "sigma"), 
            gg_theme = legend_none())
@@ -168,6 +168,14 @@ reg_prod <- all_draws |>
 #          caption = NA,
 #          filter = 'top', 
 #          options = list(pageLength = 15, autoWidth = TRUE))
+
+#get median Smsy from model 4 for Will 
+M4_Smsy <- all_draws |>
+  filter(model == "m4") |>
+  group_by(pop) |>
+  summarise(Smsy_med = median(Smsy))
+
+write.csv(M4_Smsy, here("output/data/M4_Smsy_med.csv"), row.names = FALSE)
 ```
 
 ## Posterior distributions  
