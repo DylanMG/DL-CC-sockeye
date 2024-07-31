@@ -90,6 +90,7 @@ colnames(pop_data) <- tolower(colnames(pop_data))
 ```
 
 ## Diagnostics  
+Here we check if chains have mixed, the maximum **R-hat** is less than 1.05, and that the effective sample size is at least 10% of the iterations 
 
 ### Model 1  
 Fits for each population with uninformative priors. We won't plot any `mcmc_combo()` for this because there's too many parameters (3 per population, since all independent) to nicely visualize in a summary doc. You can fork the [code](https://github.com/DylanMG/sockeye-hab-SRR-Stan/blob/main/R/model_fitting_comparison.Rmd) and run `rstanarm::launch_shinystan()` to check  models if you want. Just look at the sigma as a check, then report max Rhats later.  
@@ -98,6 +99,9 @@ mcmc_combo(fits[[1]], combo = c("dens_overlay", "trace"),
            pars = c("sigma"), 
            gg_theme = legend_none())
 #plot(fits[[1]])
+fit1.summary  <- as.data.frame(rstan::summary(fits[[1]])$summary)
+max(fit1.summary$Rhat, na.rm = TRUE)
+min(fit1.summary$n_eff, na.rm = TRUE)/4000 #WHAT IS GOING ON WITH NEFF HERE!! max is more than iter
 ```
 
 ### Model 2a  
@@ -107,6 +111,9 @@ Uninformative hierarchical $\alpha$
 mcmc_combo(fits[[2]], combo = c("dens_overlay", "trace"), 
            pars = c("log_a", "sd_a_pop", "sigma"), 
            gg_theme = legend_none())
+fit2a.summary  <- as.data.frame(rstan::summary(fits[[2]])$summary)
+max(fit2a.summary$Rhat, na.rm = T)
+min(fit2a.summary$n_eff, na.rm = TRUE)/4000
 #loo(fits[[2]])
 #plot(loo(fits[[2]]))
 ```
@@ -120,6 +127,9 @@ mcmc_combo(fits[[3]], combo = c("dens_overlay", "trace"),
 mcmc_combo(fits[[3]], combo = c("dens_overlay", "trace"), 
            pars = c("log_a_region[1]", "log_a_region[2]", "log_a_region[3]"), 
            gg_theme = legend_none()) 
+fit2b.summary  <- as.data.frame(rstan::summary(fits[[3]])$summary)
+max(fit2b.summary$Rhat, na.rm = T)
+min(fit2b.summary$n_eff, na.rm = TRUE)/4000
 #loo(fits[[3]])
 #plot(loo(fits[[3]]))
 ```
@@ -131,6 +141,9 @@ Models fit to each lake with an informative $\beta$ prior based on $S_{MAX_{PR}}
 mcmc_combo(fits[[4]], combo = c("dens_overlay", "trace"), 
            pars = c("sigma"), 
            gg_theme = legend_none())
+fit3.summary  <- as.data.frame(rstan::summary(fits[[4]])$summary)
+max(fit3.summary$Rhat, na.rm = T)
+min(fit3.summary$n_eff, na.rm = TRUE)/4000
 #loo(fits[[4]])
 #plot(loo(fits[[4]]))
 ```
@@ -144,6 +157,9 @@ mcmc_combo(fits[[5]], combo = c("dens_overlay", "trace"),
 mcmc_combo(fits[[5]], combo = c("dens_overlay", "trace"), 
            pars = c("log_a_region[1]", "log_a_region[2]", "log_a_region[3]"), 
            gg_theme = legend_none()) 
+fit4.summary  <- as.data.frame(rstan::summary(fits[[5]])$summary)
+max(fit4.summary$Rhat, na.rm = T)
+min(fit4.summary$n_eff, na.rm = TRUE)/4000
 #loo(fits[[5]])
 #plot(loo(fits[[5]]))
 ```
