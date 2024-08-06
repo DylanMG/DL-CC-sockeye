@@ -51,7 +51,7 @@ Read in the PR data and the time series of stock recruit data then join into 1 b
 SmaxPR <- read.table(here("output/data/SmaxPRs.txt"), 
                      header = TRUE) |>
   select(population, region, water_clarity, SmaxPR, SmaxPR_SD) |>
-  rename(pop = population) #to match below
+  dplyr::rename(pop = population) #to match below
 
 SR_data <- read.table(here("data/FinalBroodSK.txt"), 
                       header = TRUE) |>
@@ -63,7 +63,7 @@ SR_data <- read.table(here("data/FinalBroodSK.txt"),
                                watershed == "freeda_brodie" ~ "freeda_lakes",
                                TRUE ~ watershed)) |> #leave the rest alone
   mutate(logRS = log(total_rec/exp_spawn)) |> #shorten names for plotting, etc.
-  rename(pop = watershed) |>
+  dplyr::rename(pop = watershed) |>
   relocate(pop, 1) |>
   filter(pop !="end_hill") |>
   arrange(pop, year) |>
@@ -78,7 +78,7 @@ SR_pairs <- SR_data |>
   pull(SR_pairs)
 
 pop_data <- read.csv(here("output/pub_tables/S1.csv")) |>
-  rename(pop = population) |>
+  dplyr::rename(pop = population) |>
   mutate(pop = gsub("_", "-", pop)) |> #change delimiter for use later
   mutate(pop_index = row_number()) |>
   cbind(SR_pairs)

@@ -38,4 +38,7 @@ generated quantities {
   for (i in 1:N){
     log_lik[i] = normal_lpdf(logRS[i]|log_a_pop[pop[i]] - X[i]*b_pop, sigma);
   }
+  
+  array[N] real logRS_rep;
+  logRS_rep = normal_rng(log_a_pop[pop] - X*b_pop, sigma);
 }
