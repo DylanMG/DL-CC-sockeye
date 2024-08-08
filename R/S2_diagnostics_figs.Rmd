@@ -34,6 +34,7 @@ library(patchwork) #to align multi-pane plots
 library(grid) #to help patchwork with fonts
 library(gsl) #for lambert_W0()
 library(DT) #for making a nice html table 
+library(shinystan)
 source(here("R/functions.R"))
 
 knitr::opts_chunk$set(warning = FALSE, 
@@ -42,7 +43,7 @@ knitr::opts_chunk$set(warning = FALSE,
                       fig.path = paste0(here("output/plots"), "/"))
 ```
 # Background  
-These are some diagnostics and posteriors from the stock recruit analyses in the article mentioned above.
+These are some model diagnostics and posteriors from the spawner-recruit analyses in the article mentioned above.
 ```{r load fits and data}
 models <- c("m1", "m2a", "m2b", "m3", "m4")
 
@@ -90,21 +91,22 @@ colnames(pop_data) <- tolower(colnames(pop_data))
 ```
 
 ## Diagnostics  
-Here we check if chains have mixed, the maximum **R-hat** is less than 1.05, and that the effective sample size is at least 10% of the iterations 
+Here we check if chains have mixed, the maximum $\hat{R}$ is less than 1.05, and that the effective sample size is at least 10% of the iterations, or in our case 400. 
 
 ### Model 1  
-Fits for each population with uninformative priors. We won't plot any `mcmc_combo()` for this because there's too many parameters (3 per population, since all independent) to nicely visualize in a summary doc. You can fork the [code](https://github.com/DylanMG/sockeye-hab-SRR-Stan/blob/main/R/model_fitting_comparison.Rmd) and run `rstanarm::launch_shinystan()` to check  models if you want. Just look at the sigma as a check, then report max Rhats later.  
+Fits for each population with uninformative priors. We won't plot any `mcmc_combo()` for this because there's too many parameters (3 per population, since all are fit independently) to nicely visualize in a summary doc. You can fork the [code](https://github.com/DylanMG/sockeye-hab-SRR-Stan/blob/main/R/model_fitting_comparison.Rmd) and run `rstanarm::launch_shinystan()` to check  models if you want. Just look at the sigma as a check, then report max Rhats later.  
 ```{r m1-diag}
 mcmc_combo(fits[[1]], combo = c("dens_overlay", "trace"), 
            pars = c("sigma"), 
            gg_theme = legend_none())
 #plot(fits[[1]])
 fit1.summary  <- as.data.frame(rstan::summary(fits[[1]])$summary)
-max(fit1.summary$Rhat, na.rm = TRUE)
-min(fit1.summary$n_eff, na.rm = TRUE)/4000 #WHAT IS GOING ON WITH NEFF HERE!! max is more than iter
+paste("max R-hat =", max(fit1.summary$Rhat, na.rm = TRUE))
+paste("min ESS =", min(fit1.summary$n_eff, na.rm = TRUE)) #WHAT IS GOING ON WITH NEFF HERE!! max is more than iter
+
 ggplot(fit1.summary, aes(n_eff)) +
   geom_histogram() +
-  geom_vline(xintercept = 400, lty=2) +
+  geom_vline(xintercept = 400, lty=2) + #could annotate a "10%" here too 
   theme_classic() +
   labs(x = "effective sample size")
 ```
@@ -117,8 +119,8 @@ mcmc_combo(fits[[2]], combo = c("dens_overlay", "trace"),
            pars = c("log_a", "sd_a_pop", "sigma"), 
            gg_theme = legend_none())
 fit2a.summary  <- as.data.frame(rstan::summary(fits[[2]])$summary)
-max(fit2a.summary$Rhat, na.rm = TRUE)
-min(fit2a.summary$n_eff, na.rm = TRUE)/4000
+paste("max R-hat =", max(fit2a.summary$Rhat, na.rm = TRUE))
+paste("min ESS =", min(fit2a.summary$n_eff, na.rm = TRUE))
 #loo(fits[[2]])
 #plot(loo(fits[[2]]))
 ggplot(fit2a.summary, aes(n_eff)) +
@@ -132,9 +134,16 @@ logRS <- SR_data$logRS
 model.pars2a <- rstan::extract(fits[[2]])
 logRS_rep <- model.pars2a$logRS_rep
 
-ppc_dens_overlay(logRS, logRS_rep) +
-  theme(legend.position = "none") +
-  labs(y = "density", x = "y_est")
+#ppc_dens_overlay(logRS, logRS_rep) +
+#  theme(legend.position = "none") +
+#  labs(y = "density", x = "y_est")
+
+#further diagnosing divergent transitions
+#posterior_2a <- as.array(fits[[2]])
+#np_2a <- nuts_params(fits[[2]])
+#mcmc_parcoord(posterior_2a, np = np_2a)
+
+#launch_shinystan(fits[[2]])
 ```
 
 ### Model 2b  
@@ -147,8 +156,8 @@ mcmc_combo(fits[[3]], combo = c("dens_overlay", "trace"),
            pars = c("log_a_region[1]", "log_a_region[2]", "log_a_region[3]"), 
            gg_theme = legend_none()) 
 fit2b.summary  <- as.data.frame(rstan::summary(fits[[3]])$summary)
-max(fit2b.summary$Rhat, na.rm = TRUE)
-min(fit2b.summary$n_eff, na.rm = TRUE)/4000
+paste("max R-hat =", max(fit2b.summary$Rhat, na.rm = TRUE))
+paste("min ESS =", min(fit2b.summary$n_eff, na.rm = TRUE))
 #loo(fits[[3]])
 #plot(loo(fits[[3]]))
 ggplot(fit2b.summary, aes(n_eff)) +
@@ -166,8 +175,8 @@ mcmc_combo(fits[[4]], combo = c("dens_overlay", "trace"),
            pars = c("sigma"), 
            gg_theme = legend_none())
 fit3.summary  <- as.data.frame(rstan::summary(fits[[4]])$summary)
-max(fit3.summary$Rhat, na.rm = TRUE)
-min(fit3.summary$n_eff, na.rm = TRUE)/4000
+paste("max R-hat =", max(fit3.summary$Rhat, na.rm = TRUE))
+paste("min ESS =", min(fit3.summary$n_eff, na.rm = TRUE))
 #loo(fits[[4]])
 #plot(loo(fits[[4]]))
 ggplot(fit3.summary, aes(n_eff)) +
@@ -187,8 +196,8 @@ mcmc_combo(fits[[5]], combo = c("dens_overlay", "trace"),
            pars = c("log_a_region[1]", "log_a_region[2]", "log_a_region[3]"), 
            gg_theme = legend_none()) 
 fit4.summary  <- as.data.frame(rstan::summary(fits[[5]])$summary)
-max(fit4.summary$Rhat, na.rm = TRUE)
-min(fit4.summary$n_eff, na.rm = TRUE)/4000
+paste("max R-hat =", max(fit4.summary$Rhat, na.rm = TRUE))
+paste("min ESS =", min(fit4.summary$n_eff, na.rm = TRUE))
 #loo(fits[[5]])
 #plot(loo(fits[[5]]))
 ggplot(fit4.summary, aes(n_eff)) +

@@ -69,7 +69,9 @@ SR_data <- read.table(here("data/FinalBroodSK.txt"),
   arrange(pop, year) |>
   left_join(SmaxPR, by = "pop") |> #join it to have 1 object to reference
   mutate(pop = gsub("_", "-", pop)) |> #change delimiter for use later
-  na.omit() #drops years missing logRS
+  na.omit() |>
+  group_by(pop) |>
+  mutate(exp_spawn_scaled = scale(exp_spawn))
 
 SR_pairs <- SR_data |>
   group_by(pop, region, water_clarity, SmaxPR, SmaxPR_SD) |>
@@ -103,6 +105,7 @@ for(i in 1:pages){
   
   p <- ggplot(sub_dat, 
               aes(exp_spawn/1000, logRS)) +
+              #aes(exp_spawn_scaled, logRS)) +
     geom_point() +
     ggh4x::facet_wrap2(vars(pop), 
                        nrow=(max_facets/4), 
