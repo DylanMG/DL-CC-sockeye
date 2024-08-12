@@ -249,7 +249,8 @@ j <- 1 #facet index helper
 #make and print plots
 for(i in 1:pages){
   sub_dat <- filter(all_draws, 
-                    pop %in% str_to_title(unique(SR_data$pop))[j:(j+(max_facets-1))])
+                    pop %in% gsub("-", " ", 
+                                  str_to_title(unique(SR_data$pop)))[j:(j+(max_facets-1))])
   
   p <- ggplot(sub_dat, 
               aes(model, log(Smsy))) +
@@ -279,7 +280,8 @@ j <- 1 #facet index helper
 #make and print plots
 for(i in 1:pages){
   sub_dat <- filter(all_draws, 
-                    pop %in% str_to_title(unique(SR_data$pop))[j:(j+(max_facets-1))])
+                    pop %in% gsub("-", " ", 
+                                  str_to_title(unique(SR_data$pop)))[j:(j+(max_facets-1))])
   
   p <- ggplot(sub_dat, 
               aes(model, log_a)) +
@@ -309,7 +311,8 @@ j <- 1 #facet index helper
 #make and print plots
 for(i in 1:pages){
   sub_dat <- filter(all_draws, 
-                    pop %in% str_to_title(unique(SR_data$pop))[j:(j+(max_facets-1))])
+                    pop %in% gsub("-", " ", 
+                                  str_to_title(unique(SR_data$pop)))[j:(j+(max_facets-1))])
   
   p <- ggplot(sub_dat, 
               aes(model, b)) +
