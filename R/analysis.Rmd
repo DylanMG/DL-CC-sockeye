@@ -91,8 +91,42 @@ rm(SmaxPR, SR_pairs)
 ```
   
 ### Plot data  
-Make some plots to see the data we're working with.    
-```{r SR-plots}
+Make some plots to see the data we're working with. 
+
+#### Raw data 
+```{r SR-plots-raw}
+#make helpers
+max_facets <- 16
+pages <- ceiling(length(unique(SR_data$pop))/max_facets)
+j <- 1 #facet index helper
+
+#make and print plots
+for(i in 1:pages){
+  sub_dat <- filter(SR_data, 
+                    pop %in% unique(SR_data$pop)[j:(j+(max_facets-1))])
+  
+  p <- ggplot(sub_dat, 
+              aes(exp_spawn/1000, total_rec)) +
+              #aes(exp_spawn_scaled, logRS)) +
+    geom_point() +
+    ggh4x::facet_wrap2(vars(pop), 
+                       nrow=(max_facets/4), 
+                       ncol=(max_facets/4), 
+                       trim_blank=FALSE,
+                       scales = "free") +
+    labs(title = paste0("Sockeye spawner-recruit relationship (", i, " of ", pages, ")"), 
+         y = "Recruits", 
+         x = "Spawners (thousands)") +
+    theme_bw()
+  
+  print(p)
+  
+  j <- j + max_facets
+}
+```
+
+#### Linear style 
+```{r SR-plots-linear}
 #make helpers
 max_facets <- 16
 pages <- ceiling(length(unique(SR_data$pop))/max_facets)
