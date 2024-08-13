@@ -139,8 +139,8 @@ logRS_rep <- model.pars2a$logRS_rep
 #  labs(y = "density", x = "y_est")
 
 #further diagnosing divergent transitions
-#posterior_2a <- as.array(fits[[2]])
-#np_2a <- nuts_params(fits[[2]])
+posterior_2a <- as.array(fits[[2]])
+np_2a <- nuts_params(fits[[2]])
 #mcmc_parcoord(posterior_2a, np = np_2a)
 
 #launch_shinystan(fits[[2]])
