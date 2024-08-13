@@ -230,7 +230,7 @@ if("m1" %in% list.files(here("output/model_fits")) & refit == FALSE){
 if("m2a" %in% list.files(here("output/model_fits")) & refit == FALSE){
   m2a <- readRDS(here("output/model_fits/m2a"))
 } else{
-  m2a <- stan(here("Stan/model2a.stan"), 
+  m2a <- stan(here("Stan/model2a_HN.stan"), 
               data=stan_data, 
               model_name = "m2a", 
               iter = 4000)
