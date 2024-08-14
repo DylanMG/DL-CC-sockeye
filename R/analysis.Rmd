@@ -230,11 +230,11 @@ if("m1" %in% list.files(here("output/model_fits")) & refit == FALSE){
 if("m2a" %in% list.files(here("output/model_fits")) & refit == FALSE){
   m2a <- readRDS(here("output/model_fits/m2a"))
 } else{
-  m2a <- stan(here("Stan/model2a_HN.stan"), 
+  m2a <- stan(here("Stan/model2a_uncentered.stan"), 
               data=stan_data, 
               model_name = "m2a", 
               iter = 4000)
-  saveRDS(m2a, file = here("output/model_fits/m2a"))
+  saveRDS(m2a, file = here("output/model_fits/m2a_uncentered"))
 }
 
 if("m2b" %in% list.files(here("output/model_fits")) & refit == FALSE){
@@ -260,11 +260,11 @@ if("m3" %in% list.files(here("output/model_fits")) & refit == FALSE){
 if("m4" %in% list.files(here("output/model_fits")) & refit == FALSE){
   m4 <- readRDS(here("output/model_fits/m4"))
 } else{
-  m4 <- stan(here("Stan/model4.stan"), 
+  m4 <- stan(here("Stan/model4_HN.stan"), 
              data=stan_data, 
              model_name = "m4", 
              iter = 4000)
-  saveRDS(m4, file = here("output/model_fits/m4"))
+  saveRDS(m4, file = here("output/model_fits/m4_HN"))
 }
 ```
 
