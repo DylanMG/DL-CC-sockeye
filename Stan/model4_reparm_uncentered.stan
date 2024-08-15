@@ -26,9 +26,9 @@ parameters {
   vector[J] z_a_dev_pop; //pop specific deviation from global
   vector[K] z_a_dev_region; //regional alpha deviations
   vector[J] log_b_pop; //slopes for each pop 
-  real sigma; //main variance term
-  real sd_a_pop; //variance of means for around pops
-  real sd_a_region; //variance of means for region //SHOULD THIS BE VECTOR LENGTH K NOW?
+  real<lower=0> sigma; //main variance term
+  real<lower=0> sd_a_pop; //variance of means for around pops
+  real<lower=0> sd_a_region; //variance of means for region //SHOULD THIS BE VECTOR LENGTH K NOW?
 }
 
 transformed parameters {
