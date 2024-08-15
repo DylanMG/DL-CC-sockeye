@@ -260,12 +260,25 @@ if("m3" %in% list.files(here("output/model_fits")) & refit == FALSE){
 if("m4" %in% list.files(here("output/model_fits")) & refit == FALSE){
   m4 <- readRDS(here("output/model_fits/m4"))
 } else{
-  m4 <- stan(here("Stan/model4_HN.stan"), 
+  m4 <- stan(here("Stan/model4_reparm.stan"), 
              data=stan_data, 
              model_name = "m4", 
-             iter = 4000)
+             iter = 4000) #next try with N(0,1) on alpha devs
   saveRDS(m4, file = here("output/model_fits/m4_HN"))
 }
+```
+
+```{r m4 diag}
+bayesAB::plotNormal(1,1)
+bayesAB::plotGamma(2,4)
+
+mcmc_combo(m4, combo = c("dens_overlay", "trace"), 
+           pars = c("log_a", "sd_a_pop", "sigma"), 
+           gg_theme = legend_none())
+mcmc_combo(m4, combo = c("dens_overlay", "trace"), 
+           pars = c("log_a_region[1]", "log_a_region[2]", "log_a_region[3]"), 
+           gg_theme = legend_none()) 
+fit4.summary  <- as.data.frame(rstan::summary(m4)$summary)
 ```
 
 ## Extract draws, get $S_{MSY}$  

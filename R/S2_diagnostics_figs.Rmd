@@ -137,18 +137,31 @@ logRS_rep <- model.pars2a$logRS_rep
 #ppc_dens_overlay(logRS, logRS_rep) +
 #  theme(legend.position = "none") +
 #  labs(y = "density", x = "y_est")
+```
 
-#further diagnosing divergent transitions
-#posterior_2a <- as.array(fits[[2]])
-#np_2a <- nuts_params(fits[[2]])
+```{r m2a-variants}
+# further diagnosing divergent transitions
+if(FALSE){
+posterior_2a <- as.array(fits[[2]])
+np_2a <- nuts_params(fits[[2]])
 #mcmc_parcoord(posterior_2a, np = np_2a)
 
 #launch_shinystan(fits[[2]])
+fit2a.HN <- readRDS(here("output/model_fits/alternates/m2a_HN"))
+fit2a.UC <- readRDS(here("output/model_fits/alternates/m2a_uncentered"))
+fit2a.UC.HN <- readRDS(here("output/model_fits/alternates/m2a_uncentered_HN"))
+fit4.HN <- readRDS(here("output/model_fits/alternates/m4_HN"))
 
-#launch_shinystan(readRDS(here("output/model_fits/alternates/m2a_HN")))
-#launch_shinystan(readRDS(here("output/model_fits/alternates/m2a_uncentered")))
-#launch_shinystan(readRDS(here("output/model_fits/alternates/m2a_uncentered_HN")))
-#launch_shinystan(readRDS(here("output/model_fits/alternates/m4_HN")))
+fit2a.HN.summary  <- as.data.frame(rstan::summary(fit2a.HN)$summary)
+fit2a.UC.summary  <- as.data.frame(rstan::summary(fit2a.UC)$summary)
+fit2a.UC.HN.summary  <- as.data.frame(rstan::summary(fit2a.UC.HN)$summary)
+fit4.HN.summary  <- as.data.frame(rstan::summary(fit4.HN)$summary)
+
+#launch_shinystan(fit2a.HN)
+#launch_shinystan(fit2a.UC)
+#launch_shinystan(fit2a.UC.HN)
+#launch_shinystan(fit4.HN)
+}
 
 ```
 
