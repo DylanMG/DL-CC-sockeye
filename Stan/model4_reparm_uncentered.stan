@@ -26,9 +26,9 @@ parameters {
   vector[J] z_a_dev_pop; //pop specific deviation from global
   vector[K] z_a_dev_region; //regional alpha deviations
   vector[J] log_b_pop; //slopes for each pop 
-  vector<lower=0>[K] sigma; //main variance term
-  vector<lower=0>[K] sd_a_pop; //variance of means for around pops
-  vector<lower=0> sd_a_region; //variance of means for region //SHOULD THIS BE VECTOR LENGTH K NOW?
+  vector<lower=0>[J] sigma; //main variance term
+  vector<lower=0>[J] sd_a_pop; //variance of means for around pops
+  real<lower=0> sd_a_region; //variance of means for region
 }
 
 transformed parameters {
@@ -36,8 +36,8 @@ transformed parameters {
   vector<lower=0>[J] log_a_pop; //population alpha deviations
   vector[J] b_pop;
   
-  log_a_reg = log_a + z_a_dev_region*sd_a_region; //PROBLEM 
-  log_a_pop = log_a_reg[reg_pop]+ z_a_dev_pop*sd_a_pop[reg_pop];//realized log_a_pop
+  log_a_reg = log_a + z_a_dev_region[reg_pop]*sd_a_region; //regional alpha estimated
+  log_a_pop = log_a_reg[reg_pop]+ z_a_dev_pop[reg_pop].*sd_a_pop[reg_pop];//realized log_a_pop
   
   b_pop = exp(log_b_pop);
 }
@@ -51,16 +51,16 @@ model {
   
   //variance priors
   sigma ~ normal(1,1); 
-  sd_a_pop ~ normal(0,1); 
-  sd_a_region ~ normal(0,1);
+  sd_a_pop ~ gamma(2,3); 
+  sd_a_region ~ gamma(2,3);
 
   //likelihood model
   logRS ~ normal(log_a_pop[pop] - X*b_pop, sigma[pop]);
 }
 
 //helper to get log_lik from extract_log_lik help file
-generated quantities{
-  vector[N]  log_lik; 
-  for (i in 1:N){log_lik[i] = normal_lpdf(logRS[i] | log_a_pop[pop[i]] - X[i]*b_pop, sigma); //HOW REF SIGMA?
-  }
-}
+//generated quantities{
+//  vector[N]  log_lik; 
+//  for (i in 1:N){log_lik[i] = normal_lpdf(logRS[i] | log_a_pop[pop[i]] - X[i]*b_pop, sigma); //HOW REF SIGMA?
+//  }
+//}
