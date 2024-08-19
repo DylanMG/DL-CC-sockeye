@@ -29,9 +29,9 @@ model {
   b_pop ~ normal(pow(SmaxPR, -1), pow(SmaxPR_SD, -1));
   
   //variance priors
-  sigma ~ gamma(2,3); 
-  sd_a_pop ~ gamma(2,3);
-  sd_a_region ~ gamma(2,3);
+  sigma ~ gamma(3,2); 
+  sd_a_pop ~ gamma(3,2);
+  sd_a_region ~ gamma(3,2);
 
   //likelihood model
   logRS ~ normal(log_a_pop[pop] - X*b_pop, sigma);
