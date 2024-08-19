@@ -27,7 +27,7 @@ parameters {
   vector[K] log_a_region; //regional alpha deviations
   vector[J] log_b_pop; //slopes for each pop 
   vector<lower=0>[J] sigma; //main variance term
-  real<lower=0>[K] sd_a_pop; //variance of means for around pops
+  vector<lower=0>[K] sd_a_pop; //variance of means for around pops
   real<lower=0> sd_a_region; //variance of means for region
 }
 
@@ -38,7 +38,7 @@ transformed parameters {
 
 model {
   //priors
-  log_a ~ normal(1.5,2);
+  log_a ~ gamma(3,2);
   log_a_region ~ normal(0, sd_a_region);
   log_a_pop ~ normal(log_a + log_a_region[reg_pop], sd_a_pop[reg_pop]);
   log_b_pop ~ normal(logbeta_pr, logbeta_pr_sig); 
@@ -53,8 +53,8 @@ model {
 }
 
 //helper to get log_lik from extract_log_lik help file
-generated quantities{
-  vector[N]  log_lik; 
-  for (i in 1:N){log_lik[i] = normal_lpdf(logRS[i] | log_a_pop[pop[i]] - X[i]*b_pop, sigma);
-  }
-}
+//generated quantities{
+ // vector[N]  log_lik; 
+  //for (i in 1:N){log_lik[i] = normal_lpdf(logRS[i] | log_a_pop[pop[i]] - X[i]*b_pop, sigma[pop[i]]);
+//  }
+//}
