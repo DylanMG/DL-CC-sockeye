@@ -38,15 +38,15 @@ transformed parameters {
 
 model {
   //priors
-  log_a ~ gamma(3,2);
+  log_a ~ normal(1.5,2);
   log_a_region ~ normal(0, sd_a_region);
   log_a_pop ~ normal(log_a + log_a_region[reg_pop], sd_a_pop[reg_pop]);
   log_b_pop ~ normal(logbeta_pr, logbeta_pr_sig); 
   
   //variance priors
   sigma ~ normal(1,1); 
-  sd_a_pop ~ gamma(2,3); //leave these gamma to allow large deviations? 
-  sd_a_region ~ gamma(2,3);
+  sd_a_pop ~ normal(0,2); //leave these gamma to allow large deviations? 
+  sd_a_region ~ normal(0,2);
 
   //likelihood model
   logRS ~ normal(log_a_pop[pop] - X*b_pop, sigma[pop]);

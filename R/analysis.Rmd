@@ -33,6 +33,7 @@ library(loo) #for looic
 library(patchwork) #to align multi-pane plots
 library(grid) #to help patchwork with fonts
 library(gsl) #for lambert_W0()
+library(shinystan)
 source(here("R/functions.R"))
 
 set.seed(123)
@@ -173,7 +174,7 @@ Models are checked in [Supplement 2](https://dylanmg.github.io/DL-CC-sockeye/out
 ```{r compile-stan-data}
 logRS <- SR_data$logRS #response variable
 pop <- as.numeric(as.factor(SR_data$pop)) #pop index vector
-N <- length(logRS) #n observations
+N <- as.numeric(length(logRS)) #n observations
 J <- max(pop) #n populations
 K <- max(as.numeric(as.factor(SR_data$region))) #n regions
 region <- as.numeric(as.factor(SR_data$region)) #region index vector
@@ -269,7 +270,7 @@ if("m4" %in% list.files(here("output/model_fits")) & refit == FALSE){
 ```
 
 ```{r m4 diag}
-bayesAB::plotNormal(0,1)
+bayesAB::plotNormal(0,2)
 bayesAB::plotGamma(2,3)
 
 mcmc_combo(m4, combo = c("dens_overlay", "trace"), 
