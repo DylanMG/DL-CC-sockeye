@@ -23,8 +23,8 @@ transformed data{
 
 parameters {
   real log_a; //global alpha
-  vector<lower=0>[J] log_a_pop; //population alpha deviations
-  vector[K] log_a_region; //regional alpha deviations
+  vector[J] z_a_pop; //population alpha deviations
+  vector[K] z_a_region; //regional alpha deviations
   vector[J] log_b_pop; //slopes for each pop 
   vector<lower=0>[J] sigma; //main variance term
   vector<lower=0>[K] sd_a_pop; //variance of means for around pops
@@ -32,21 +32,26 @@ parameters {
 }
 
 transformed parameters {
+  vector[J] log_a_pop; //population alpha deviations //both these previously had bounds 
+  vector[K] log_a_region; //regional alpha deviations
   vector[J] b_pop;
+  
   b_pop = exp(log_b_pop);
+  log_a_region=log_a+z_a_region*sd_a_region;
+  log_a_pop=log_a_region[reg_pop]+z_a_pop.*sd_a_pop[reg_pop]; //Dylan added "." here
 }
 
 model {
   //priors
-  log_a ~ gamma(3,2);
-  log_a_region ~ normal(0, sd_a_region);
-  log_a_pop ~ normal(log_a + log_a_region[reg_pop], sd_a_pop[reg_pop]);
+  log_a ~ normal(1.5,2);
+  z_a_region ~ normal(0,1);
+  z_a_pop ~ normal(0,1);
   log_b_pop ~ normal(logbeta_pr, logbeta_pr_sig); 
   
   //variance priors
   sigma ~ normal(1,1); 
-  sd_a_pop ~ gamma(3,2); //leave these gamma to allow large deviations? 
-  sd_a_region ~gamma(3,2);
+  sd_a_pop ~ normal(0,2); //leave these gamma to allow large deviations? 
+  sd_a_region ~ normal(0,2);
 
   //likelihood model
   logRS ~ normal(log_a_pop[pop] - X*b_pop, sigma[pop]);
