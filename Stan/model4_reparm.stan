@@ -45,8 +45,8 @@ model {
   
   //variance priors
   sigma ~ normal(1,1); 
-  sd_a_pop ~ gamma(2,3); //leave these gamma to allow large deviations? 
-  sd_a_region ~ gamma(2,3);
+  sd_a_pop ~ gamma(3,2); //leave these gamma to allow large deviations? 
+  sd_a_region ~ gamma(3,2);
 
   //likelihood model
   logRS ~ normal(log_a_pop[pop] - X*b_pop, sigma);
