@@ -261,11 +261,11 @@ if("m3" %in% list.files(here("output/model_fits")) & refit == FALSE){
 if("m4" %in% list.files(here("output/model_fits")) & refit == FALSE){
   m4 <- readRDS(here("output/model_fits/m4"))
 } else{
-  m4 <- stan(here("Stan/ncp_m4.stan"), 
+  m4 <- stan(here("Stan/model4_reparm_no-region.stan"), 
              data=stan_data, 
-             model_name = "m4", 
+             model_name = "m4",  
              iter = 4000)
-  saveRDS(m4, file = here("output/model_fits/m4_HN"))
+  saveRDS(m4, file = here("output/model_fits/m4_reparm_no-region"))
 }
 ```
 
@@ -274,14 +274,31 @@ bayesAB::plotNormal(0,2)
 bayesAB::plotGamma(2,3)
 
 mcmc_combo(m4, combo = c("dens_overlay", "trace"), 
-           pars = c("log_a", "sd_a_pop", "sigma"), 
+           pars = c("log_a", "sd_a_pop","sd_sigma_pop", "sigma", "lp__"), 
            gg_theme = legend_none())
 mcmc_combo(m4, combo = c("dens_overlay", "trace"), 
            pars = c("log_a_region[1]", "log_a_region[2]", "log_a_region[3]"), 
            gg_theme = legend_none()) 
 fit4.summary  <- as.data.frame(rstan::summary(m4)$summary)
+write.csv(fit4.summary, "C:/Users/GLASERD/Desktop/fit-4-reparm-no-region.csv", row.names = F)
 
-launch_shinystan(m4)
+m4_reparm <- readRDS(here("output/model_fits/m4_reparm_G3-2")) 
+m4 <- readRDS(here("output/model_fits/m4"))
+
+m4_reparm.summary  <- as.data.frame(rstan::summary(m4_reparm)$summary) |>
+  mutate(parm = rownames(m4_reparm.summary))
+
+m4.summary  <- as.data.frame(rstan::summary(m4)$summary)|>
+  mutate(parm = rownames(m4.summary))
+
+#compare smax
+Smax_diff <- data.frame(pop = pop_data$pop, 
+                        m4_reparm_Smax = slice(m4_reparm.summary, grep("Smax", m4_reparm.summary$parm))$mean, 
+                        m4_Smax = slice(m4.summary, grep("Smax", m4.summary$parm))$mean) |>
+  mutate(perc_diff = round((m4_Smax-m4_reparm_Smax)/m4_Smax, 2))
+
+
+#launch_shinystan(m4)
 ```
 
 ## Extract draws, get $S_{MSY}$  
