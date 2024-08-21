@@ -21,15 +21,16 @@ parameters {
   real<lower=0> sd_a_region; //variance of means for region
 }
 
+
 model {
   //priors
-  log_a ~ gamma(3,2);
+  log_a ~ normal(1.5,2);
   log_a_region ~ normal(0, sd_a_region);
   log_a_pop ~ normal(log_a + log_a_region[reg_pop], sd_a_pop);
   b_pop ~ normal(pow(SmaxPR, -1), pow(SmaxPR_SD, -1));
   
   //variance priors
-  sigma ~ gamma(3,2); 
+  sigma ~ normal(1,1); 
   sd_a_pop ~ gamma(3,2);
   sd_a_region ~ gamma(3,2);
 
@@ -41,5 +42,8 @@ model {
 generated quantities{
   vector[N]  log_lik; 
   for (i in 1:N){log_lik[i] = normal_lpdf(logRS[i] | log_a_pop[pop[i]] - X[i]*b_pop, sigma);
+  }
+  vector[J] Smax_pop; 
+  for (i in 1:J){Smax_pop[i] = 1/b_pop[i]; //calc Smax directly
   }
 }
