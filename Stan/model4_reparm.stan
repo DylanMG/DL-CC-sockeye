@@ -44,9 +44,9 @@ model {
   log_b_pop ~ normal(logbeta_pr, logbeta_pr_sig); 
   
   //variance priors
-  sigma ~ normal(1,1); 
-  sd_a_pop ~ gamma(3,2); //leave these gamma to allow large deviations? 
-  sd_a_region ~ gamma(3,2);
+  sigma ~ normal(1,1); //N(1,1) seems best
+  sd_a_pop ~ gamma(3,2); //gamma(3,2) doesnt throw div. trans., N(0,2) throws them  
+  sd_a_region ~ gamma(3,2); //doesnt work with N(0,1); N(0,2)
 
   //likelihood model
   logRS ~ normal(log_a_pop[pop] - X*b_pop, sigma);
@@ -56,5 +56,8 @@ model {
 generated quantities{
   vector[N]  log_lik; 
   for (i in 1:N){log_lik[i] = normal_lpdf(logRS[i] | log_a_pop[pop[i]] - X[i]*b_pop, sigma);
+  }
+    vector[J] Smax_pop; 
+  for (i in 1:J){Smax_pop[i] = 1/b_pop[i]; //calc Smax directly
   }
 }
