@@ -22,15 +22,12 @@ transformed data{
 parameters {
   real log_a; //global alpha
   vector<lower=0>[J] log_a_pop; //pop specific a's bound by 0
-  vector[J] log_a_dev; //pop specific deviation from global
   real<lower=0> sd_a_pop; //variance of a means around pops
-
 
   vector[J] log_b_pop; //slopes for each pop 
   
   real<lower=0> sigma; //global variance term
   vector<lower=0>[J] sigma_pop; //pop specific a's bound by 0
-  vector[J] sigma_dev; //pop specific deviation from global
   real<lower=0> sd_sigma_pop; //variance of a means around pops
 }
 
@@ -42,17 +39,15 @@ transformed parameters {
 model {
   //priors
   log_a ~ normal(1.5,2);
-  log_a_dev ~ gamma(3,2); //pop level deviaitons from the global alpha
-  sd_a_pop ~ gamma(3,2);  
-  log_a_pop ~ normal(log_a + log_a_dev, sd_a_pop);
+  sd_a_pop ~ gamma(2,3);  
+  log_a_pop ~ normal(log_a, sd_a_pop);
   
   log_b_pop ~ normal(logbeta_pr, logbeta_pr_sig); 
   
   //variance priors
   sigma ~ normal(1,1); //N(1,1) seems best
-  sigma_dev ~ normal(0,1);
   sd_sigma_pop ~ normal(0,1);
-  sigma_pop ~ normal(sigma + sigma_dev, sd_sigma_pop);
+  sigma_pop ~ normal(sigma, sd_sigma_pop);
 
   //likelihood model
   logRS ~ normal(log_a_pop[pop] - X*b_pop, sigma_pop[pop]);
