@@ -261,44 +261,53 @@ if("m3" %in% list.files(here("output/model_fits")) & refit == FALSE){
 if("m4" %in% list.files(here("output/model_fits")) & refit == FALSE){
   m4 <- readRDS(here("output/model_fits/m4"))
 } else{
-  m4 <- stan(here("Stan/model4_reparm_no-region.stan"), 
+  m4 <- stan(here("Stan/model4_reparm_no-region_ind-sigs.stan"), 
              data=stan_data, 
              model_name = "m4",  
              iter = 4000)
-  saveRDS(m4, file = here("output/model_fits/m4_reparm_no-region"))
+  saveRDS(m4, file = here("output/model_fits/m4_reparm_no-region_ind-sigs"))
 }
 ```
 
 ```{r m4 diag}
-bayesAB::plotNormal(0,2)
-bayesAB::plotGamma(2,3)
+bayesAB::plotNormal(0,1)
+bayesAB::plotGamma(3,2)
 
 mcmc_combo(m4, combo = c("dens_overlay", "trace"), 
            pars = c("log_a", "sd_a_pop","sd_sigma_pop", "sigma", "lp__"), 
+           #pars = c("log_a", "sd_a_pop", "sigma", "lp__"), 
            gg_theme = legend_none())
-mcmc_combo(m4, combo = c("dens_overlay", "trace"), 
-           pars = c("log_a_region[1]", "log_a_region[2]", "log_a_region[3]"), 
-           gg_theme = legend_none()) 
 fit4.summary  <- as.data.frame(rstan::summary(m4)$summary)
 write.csv(fit4.summary, "C:/Users/GLASERD/Desktop/fit-4-reparm-no-region.csv", row.names = F)
 
-m4_reparm <- readRDS(here("output/model_fits/m4_reparm_G3-2")) 
-m4 <- readRDS(here("output/model_fits/m4"))
+m4 <- readRDS(here("output/model_fits/m4_reparm_no-region")) 
+m4_ind_sig <- readRDS(here("output/model_fits/m4_reparm_no-region_ind-sigs"))
 
-m4_reparm.summary  <- as.data.frame(rstan::summary(m4_reparm)$summary) |>
-  mutate(parm = rownames(m4_reparm.summary))
-
-m4.summary  <- as.data.frame(rstan::summary(m4)$summary)|>
+m4.summary  <- as.data.frame(rstan::summary(m4)$summary) |>
   mutate(parm = rownames(m4.summary))
 
-#compare smax
-Smax_diff <- data.frame(pop = pop_data$pop, 
-                        m4_reparm_Smax = slice(m4_reparm.summary, grep("Smax", m4_reparm.summary$parm))$mean, 
-                        m4_Smax = slice(m4.summary, grep("Smax", m4.summary$parm))$mean) |>
-  mutate(perc_diff = round((m4_Smax-m4_reparm_Smax)/m4_Smax, 2))
-
+m4.ind.summary  <- as.data.frame(rstan::summary(m4_ind_sig)$summary)|>
+  mutate(parm = rownames(m4.ind.summary))
 
 #launch_shinystan(m4)
+
+#compare smax
+Smax_diff <- bind_rows(data.frame(pop = pop_data$pop, 
+                                  model = "shared-sig",
+                        Smax = slice(m4.summary, grep("Smax", m4.summary$parm))$`50%`, 
+                        Smax_LCI = slice(m4.summary, grep("Smax", m4.summary$parm))$`25%`,
+                        Smax_UCI = slice(m4.summary, grep("Smax", m4.summary$parm))$`75%`),
+                        data.frame(pop = pop_data$pop,
+                                   model = "ind-sigs",
+                                   Smax = slice(m4.ind.summary, grep("Smax", m4.ind.summary$parm))$`50%`,
+                        Smax_LCI = slice(m4.ind.summary, grep("Smax", m4.ind.summary$parm))$`25%`,
+                        Smax_UCI = slice(m4.ind.summary, grep("Smax", m4.ind.summary$parm))$`75%`))
+
+
+ggplot(Smax_diff) +
+  geom_point(aes(x = Smax, y = pop, color = model), alpha = 0.5) +
+  geom_errorbarh(aes(y = pop, xmin = Smax_LCI, xmax=Smax_UCI, color = model), alpha = 0.5)
+
 ```
 
 ## Extract draws, get $S_{MSY}$  
