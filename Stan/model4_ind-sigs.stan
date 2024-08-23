@@ -1,7 +1,6 @@
 data {
   int<lower=1> N; //length of data
   int<lower=1> J; //n pops
-  int<lower=1> K; //n regions
   int<lower=1> pop[N]; //vector indexing populations
   matrix[N, J] X; //predictor matrix of spawners
   vector[N] logRS; //the response variable
@@ -21,13 +20,13 @@ transformed data{
 
 parameters {
   real log_a; //global alpha
-  vector<lower=0>[J] log_a_pop; //pop specific a's bound by 0
+  vector<lower=0>[J] log_a_pop; //pop specific as bound by 0
   real<lower=0> sd_a_pop; //variance of a means around pops
 
   vector[J] log_b_pop; //slopes for each pop 
   
   real<lower=0> sigma; //global variance term
-  vector<lower=0>[J] sigma_pop; //pop specific a's bound by 0
+  vector<lower=0>[J] sigma_pop; //pop specific sigmas bound by 0
   real<lower=0> sd_sigma_pop; //variance of a means around pops
 }
 
@@ -37,28 +36,25 @@ transformed parameters {
 }
 
 model {
-  //priors
-  log_a ~ normal(1.5,2);
+  log_a ~ normal(1.5,2); //priors
   sd_a_pop ~ gamma(2,3);  
   log_a_pop ~ normal(log_a, sd_a_pop);
-  
   log_b_pop ~ normal(logbeta_pr, logbeta_pr_sig); 
   
-  //variance priors
-  sigma ~ normal(1,1); //N(1,1) seems best
+  sigma ~ normal(1,1); //variance priors
   sd_sigma_pop ~ normal(0,1);
   sigma_pop ~ normal(sigma, sd_sigma_pop);
 
-  //likelihood model
-  logRS ~ normal(log_a_pop[pop] - X*b_pop, sigma_pop[pop]);
+  logRS ~ normal(log_a_pop[pop] - X*b_pop, sigma_pop[pop]); //likelihood
 }
 
-//helper to get log_lik from extract_log_lik help file
 generated quantities{
-  //vector[N]  log_lik; 
-  //for (i in 1:N){log_lik[i] = normal_lpdf(logRS[i] | log_a_pop[pop[i]] - X[i]*b_pop, sigma);
-  //}
-    vector[J] Smax_pop; 
-  for (i in 1:J){Smax_pop[i] = 1/b_pop[i]; //calc Smax directly
+  vector[N]  log_lik; //helper to get log_lik from extract_log_lik help file
+  for (i in 1:N){log_lik[i] = normal_lpdf(logRS[i] | log_a_pop[pop[i]] - X[i]*b_pop, sigma_pop[pop[i]]);
   }
+  vector[J] Smax_pop; //calc Smax directly
+  for (i in 1:J){Smax_pop[i] = 1/b_pop[i]; 
+  }
+  array[N] real logRS_rep; //posterior predictive check
+  logRS_rep = normal_rng(log_a_pop[pop] - X*b_pop, sigma_pop[pop]);
 }
