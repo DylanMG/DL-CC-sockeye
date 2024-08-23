@@ -8,12 +8,13 @@ data {
 
 parameters {
   real log_a; //global alpha
-  vector<lower=0>[J] log_a_pop; //pop specific a's bound by 0
-  vector[J] log_a_dev; //pop specific deviation from global
-  vector[J] log_b_pop; //vector of fixed slope priors
+  vector<lower=0>[J] log_a_pop; //pop specific as bound by 0
+  real<lower=0> sd_a_pop; //variance of a means around pops
+  vector[J] log_b_pop; //slopes for each pop 
   
-  real<lower=0> sigma; //error
-  real sd_a_pop; //variance of a means around pops
+  real<lower=0> sigma; //global variance term
+  vector<lower=0>[J] sigma_pop; //pop specific sigmas bound by 0
+  real<lower=0> sd_sigma_pop; //variance of a means around pops
 }
 
 transformed parameters {
@@ -22,23 +23,26 @@ transformed parameters {
 }
 
 model {
-  log_a ~ gamma(3,2); 
-  log_a_dev ~ normal(0,1); //pop level deviaitons from the global alpha
-  log_a_pop ~ normal(log_a + log_a_dev, sd_a_pop);
+  log_a ~ normal(1.5,2);//priors
+  sd_a_pop ~ gamma(2,3);  
+  log_a_pop ~ normal(log_a, sd_a_pop);
   log_b_pop ~ normal(-12, 3);
   
-  sigma ~ gamma(2,3);  //global sigma
-  sd_a_pop ~ gamma(2,3);
+  sigma ~ normal(1,1); //variance priors
+  sd_sigma_pop ~ normal(0,1);
+  sigma_pop ~ normal(sigma, sd_sigma_pop);
 
-  logRS ~ normal(log_a_pop[pop] - X*b_pop, sigma);
+  logRS ~ normal(log_a_pop[pop] - X*b_pop, sigma_pop[pop]); //likliehood
 }                                                       
 
 generated quantities {
   vector[N] log_lik;
   for (i in 1:N){
-    log_lik[i] = normal_lpdf(logRS[i]|log_a_pop[pop[i]] - X[i]*b_pop, sigma);
+    log_lik[i] = normal_lpdf(logRS[i]|log_a_pop[pop[i]] - X[i]*b_pop, sigma_pop[pop[i]]);
   }
-  
-  array[N] real logRS_rep;
-  logRS_rep = normal_rng(log_a_pop[pop] - X*b_pop, sigma);
+  vector[J] Smax_pop; //calc Smax directly
+  for (i in 1:J){Smax_pop[i] = 1/b_pop[i]; 
+  }
+  array[N] real logRS_rep; //posterior predictive check
+  logRS_rep = normal_rng(log_a_pop[pop] - X*b_pop, sigma_pop[pop]);
 }

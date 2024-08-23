@@ -8,19 +8,33 @@ data {
   matrix[N,J] int_X; //matrix to turn on/off the intercept
 }
 
+transformed data{
+  vector[J] logbeta_pr;
+  vector[J] logbeta_pr_sig;
+
+  for(i in 1:J){
+    logbeta_pr_sig[i] = sqrt(log(1+((1/SmaxPR_SD[i])*(1/SmaxPR_SD[i]))/((1/SmaxPR[i])*(1/SmaxPR[i])))); //this converts sigma on the untransformed scale to a log scale
+    logbeta_pr[i] = log(1/SmaxPR[i])-0.5*logbeta_pr_sig[i]*logbeta_pr_sig[i]; //convert smax prior to per capita slope - transform to log scale with bias correction
+  }
+}
+
 parameters {
   vector<lower=0>[J] log_a_pop; //populations' alpha estimates
-  vector<lower=0>[J] b_pop; //populations' beta estimates
+  vector<lower=0>[J] log_b_pop; //populations' beta estimates
   real<lower=0> sigma; //error
 }
 
+transformed parameters {
+  vector[J] b_pop;
+  b_pop = exp(log_b_pop);
+}
 
 model {
   //priors
-  log_a_pop ~ gamma(3,2);
-  b_pop ~ normal(pow(SmaxPR, -1), pow(SmaxPR_SD, -1));
+  log_a_pop ~ normal(1.5,2);
+  log_b_pop ~ normal(logbeta_pr, logbeta_pr_sig); 
 
-  sigma ~ gamma(2,3); 
+  sigma ~ normal(1,1); 
   //likelihood model
   logRS ~ normal(int_X*log_a_pop - X*b_pop, sigma);
 }
