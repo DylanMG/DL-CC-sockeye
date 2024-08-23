@@ -231,11 +231,11 @@ if("m1" %in% list.files(here("output/model_fits")) & refit == FALSE){
 if("m2a" %in% list.files(here("output/model_fits")) & refit == FALSE){
   m2a <- readRDS(here("output/model_fits/m2a"))
 } else{
-  m2a <- stan(here("Stan/model2a_uncentered.stan"), 
+  m2a <- stan(here("Stan/model2a.stan"), 
               data=stan_data, 
               model_name = "m2a", 
-              iter = 4000)
-  saveRDS(m2a, file = here("output/model_fits/m2a_uncentered"))
+              iter = 4000) #SOMETIMES needs more iter to fit
+  saveRDS(m2a, file = here("output/model_fits/m2a"))
 }
 
 if("m2b" %in% list.files(here("output/model_fits")) & refit == FALSE){
@@ -261,16 +261,19 @@ if("m3" %in% list.files(here("output/model_fits")) & refit == FALSE){
 if("m4" %in% list.files(here("output/model_fits")) & refit == FALSE){
   m4 <- readRDS(here("output/model_fits/m4"))
 } else{
-  m4 <- stan(here("Stan/model4_reparm_no-region_ind-sigs.stan"), 
+  m4 <- stan(here("Stan/model4_ind-sigs.stan"), 
              data=stan_data, 
              model_name = "m4",  
              iter = 4000)
-  saveRDS(m4, file = here("output/model_fits/m4_reparm_no-region_ind-sigs"))
+  saveRDS(m4, file = here("output/model_fits/m4_ind-sigs"))
 }
 ```
 
-```{r m4 diag}
-bayesAB::plotNormal(0,1)
+```{r diag}
+if(FALSE){ #testing stuff while parameterizing models and choosing priors
+fit1.summary  <- as.data.frame(rstan::summary(m1)$summary)
+
+bayesAB::plotNormal(exp(-12),exp(3))
 bayesAB::plotGamma(3,2)
 
 mcmc_combo(m4, combo = c("dens_overlay", "trace"), 
@@ -289,7 +292,7 @@ m4.summary  <- as.data.frame(rstan::summary(m4)$summary) |>
 m4.ind.summary  <- as.data.frame(rstan::summary(m4_ind_sig)$summary)|>
   mutate(parm = rownames(m4.ind.summary))
 
-#launch_shinystan(m4)
+launch_shinystan(m2a)
 
 #compare smax
 Smax_diff <- bind_rows(data.frame(pop = pop_data$pop, 
@@ -307,7 +310,7 @@ Smax_diff <- bind_rows(data.frame(pop = pop_data$pop,
 ggplot(Smax_diff) +
   geom_point(aes(x = Smax, y = pop, color = model), alpha = 0.5) +
   geom_errorbarh(aes(y = pop, xmin = Smax_LCI, xmax=Smax_UCI, color = model), alpha = 0.5)
-
+}
 ```
 
 ## Extract draws, get $S_{MSY}$  
