@@ -39,8 +39,7 @@ source(here("R/functions.R"))
 
 knitr::opts_chunk$set(warning = FALSE, 
                       message = FALSE,
-                      echo = FALSE,
-                      fig.path = paste0(here("output/plots"), "/"))
+                      echo = FALSE)
 ```
 # Background  
 These are some model diagnostics and posteriors from the spawner-recruit analyses in the article mentioned above.
@@ -94,33 +93,40 @@ colnames(pop_data) <- tolower(colnames(pop_data))
 Here we check if chains have mixed, the maximum $\hat{R}$ is less than 1.05, and that the effective sample size is at least 10% of the iterations, or in our case 400. 
 
 ### Model 1  
-Fits for each population with uninformative priors. We won't plot any `mcmc_combo()` for this because there's too many parameters (3 per population, since all are fit independently) to nicely visualize in a summary doc. You can fork the [code](https://github.com/DylanMG/sockeye-hab-SRR-Stan/blob/main/R/model_fitting_comparison.Rmd) and run `rstanarm::launch_shinystan()` to check  models if you want. Just look at the sigma as a check, then report max Rhats later.  
+Fits for each population with uninformative priors. We won't plot any `mcmc_combo()` for this because there's too many parameters (3 leading parameters per population[$\alpha$, $\beta$ and $\sigma$], since all are fit independently) to nicely visualize in a summary doc. You can fork the [code](https://github.com/DylanMG/sockeye-hab-SRR-Stan/blob/main/R/model_fitting_comparison.Rmd) and run `rstanarm::launch_shinystan()` to check  models if you want. Just look at the sigma as a check, then report max Rhats later.  
 ```{r m1-diag}
 mcmc_combo(fits[[1]], combo = c("dens_overlay", "trace"), 
-           pars = c("sigma"), 
+           pars = c("lp__"), 
            gg_theme = legend_none())
-#plot(fits[[1]])
 fit1.summary  <- as.data.frame(rstan::summary(fits[[1]])$summary)
 paste("max R-hat =", max(fit1.summary$Rhat, na.rm = TRUE))
-paste("min ESS =", min(fit1.summary$n_eff, na.rm = TRUE)) #WHAT IS GOING ON WITH NEFF HERE!! max is more than iter
+paste("min ESS =", min(fit1.summary$n_eff, na.rm = TRUE)/4000)
 
 ggplot(fit1.summary, aes(n_eff)) +
   geom_histogram() +
   geom_vline(xintercept = 400, lty=2) + #could annotate a "10%" here too 
   theme_classic() +
   labs(x = "effective sample size")
+
+#plot PPC
+logRS <- SR_data$logRS
+model.pars1 <- rstan::extract(fits[[1]])
+logRS_rep <- model.pars1$logRS_rep
+
+ppc_dens_overlay(logRS, logRS_rep) +
+  theme(legend.position = "none") +
+  labs(y = "density", x = "y_est")
 ```
 
 ### Model 2a  
 Uninformative hierarchical $\alpha$  
-
 ```{r m2a-diag}
 mcmc_combo(fits[[2]], combo = c("dens_overlay", "trace"), 
-           pars = c("log_a", "sd_a_pop", "sigma"), 
+           pars = c("log_a", "sd_a_pop", "sigma", "sd_sigma_pop", "lp__"), 
            gg_theme = legend_none())
 fit2a.summary  <- as.data.frame(rstan::summary(fits[[2]])$summary)
 paste("max R-hat =", max(fit2a.summary$Rhat, na.rm = TRUE))
-paste("min ESS =", min(fit2a.summary$n_eff, na.rm = TRUE))
+paste("min ESS =", min(fit2a.summary$n_eff, na.rm = TRUE)/4000)
 #loo(fits[[2]])
 #plot(loo(fits[[2]]))
 ggplot(fit2a.summary, aes(n_eff)) +
@@ -130,49 +136,22 @@ ggplot(fit2a.summary, aes(n_eff)) +
   labs(x = "effective sample size")
 
 #plot PPC
-logRS <- SR_data$logRS
 model.pars2a <- rstan::extract(fits[[2]])
 logRS_rep <- model.pars2a$logRS_rep
 
-#ppc_dens_overlay(logRS, logRS_rep) +
-#  theme(legend.position = "none") +
-#  labs(y = "density", x = "y_est")
-```
-
-```{r m2a-variants}
-# further diagnosing divergent transitions
-if(FALSE){
-posterior_2a <- as.array(fits[[2]])
-np_2a <- nuts_params(fits[[2]])
-#mcmc_parcoord(posterior_2a, np = np_2a)
-
-#launch_shinystan(fits[[2]])
-fit2a.HN <- readRDS(here("output/model_fits/alternates/m2a_HN"))
-fit2a.UC <- readRDS(here("output/model_fits/alternates/m2a_uncentered"))
-fit2a.UC.HN <- readRDS(here("output/model_fits/alternates/m2a_uncentered_HN"))
-fit4.HN <- readRDS(here("output/model_fits/alternates/m4_HN"))
-
-fit2a.HN.summary  <- as.data.frame(rstan::summary(fit2a.HN)$summary)
-fit2a.UC.summary  <- as.data.frame(rstan::summary(fit2a.UC)$summary)
-fit2a.UC.HN.summary  <- as.data.frame(rstan::summary(fit2a.UC.HN)$summary)
-fit4.HN.summary  <- as.data.frame(rstan::summary(fit4.HN)$summary)
-
-#launch_shinystan(fit2a.HN)
-#launch_shinystan(fit2a.UC)
-#launch_shinystan(fit2a.UC.HN)
-#launch_shinystan(fit4.HN)
-}
-
+ppc_dens_overlay(logRS, logRS_rep) +
+  theme(legend.position = "none") +
+  labs(y = "density", x = "y_est")
 ```
 
 ### Model 2b  
 Now we make $\alpha$ hierarchical to each biogeoclimatic zone; each of the 3 biogeoclimatic regions gets it *own* distribution that population level random effects are drawn from.  
 ```{r m2b-diag}
 mcmc_combo(fits[[3]], combo = c("dens_overlay", "trace"), 
-           pars = c("log_a", "sd_a_pop", "sd_a_region", "sigma"), 
+           pars = c("log_a",  "sd_a_pop", "sigma", "sd_sigma_pop", "lp__"), 
            gg_theme = legend_none())
 mcmc_combo(fits[[3]], combo = c("dens_overlay", "trace"), 
-           pars = c("log_a_region[1]", "log_a_region[2]", "log_a_region[3]"), 
+           pars = c("log_a_region[1]", "log_a_region[2]", "log_a_region[3]", "sd_a_region"), 
            gg_theme = legend_none()) 
 fit2b.summary  <- as.data.frame(rstan::summary(fits[[3]])$summary)
 paste("max R-hat =", max(fit2b.summary$Rhat, na.rm = TRUE))
@@ -184,14 +163,21 @@ ggplot(fit2b.summary, aes(n_eff)) +
   geom_vline(xintercept = 400, lty=2) +
   theme_classic() +
   labs(x = "effective sample size")
+
+#plot PPC
+model.pars2b <- rstan::extract(fits[[3]])
+logRS_rep <- model.pars2b$logRS_rep
+
+ppc_dens_overlay(logRS, logRS_rep) +
+  theme(legend.position = "none") +
+  labs(y = "density", x = "y_est")
 ```
 
 ### Model 3  
 Models fit to each lake with an informative $\beta$ prior based on $S_{MAX_{PR}}$, and an uninformative prior for $\alpha$. We'll just plot the sigma here since everything else is independent. 
 ```{r m3-diag}
-#need to find a better way to check the chains?
 mcmc_combo(fits[[4]], combo = c("dens_overlay", "trace"), 
-           pars = c("sigma"), 
+           pars = c("lp__"), 
            gg_theme = legend_none())
 fit3.summary  <- as.data.frame(rstan::summary(fits[[4]])$summary)
 paste("max R-hat =", max(fit3.summary$Rhat, na.rm = TRUE))
@@ -203,17 +189,22 @@ ggplot(fit3.summary, aes(n_eff)) +
   geom_vline(xintercept = 400, lty=2) +
   theme_classic() +
   labs(x = "effective sample size")
+
+#plot PPC
+model.pars3 <- rstan::extract(fits[[4]])
+logRS_rep <- model.pars3$logRS_rep
+
+ppc_dens_overlay(logRS, logRS_rep) +
+  theme(legend.position = "none") +
+  labs(y = "density", x = "y_est")
 ```
 
 ### Model 4
 Informative, hierarchical $\alpha$ based on model performance in model 2 (i.e. grouped $\alpha$ or not), with informative priors on data based on Smax_PR.   
 ```{r m4-diag}
 mcmc_combo(fits[[5]], combo = c("dens_overlay", "trace"), 
-           pars = c("log_a", "sd_a_pop", "sigma"), 
+           pars = c("log_a",  "sd_a_pop", "sigma", "sd_sigma_pop", "lp__"), 
            gg_theme = legend_none())
-mcmc_combo(fits[[5]], combo = c("dens_overlay", "trace"), 
-           pars = c("log_a_region[1]", "log_a_region[2]", "log_a_region[3]"), 
-           gg_theme = legend_none()) 
 fit4.summary  <- as.data.frame(rstan::summary(fits[[5]])$summary)
 paste("max R-hat =", max(fit4.summary$Rhat, na.rm = TRUE))
 paste("min ESS =", min(fit4.summary$n_eff, na.rm = TRUE))
@@ -224,6 +215,15 @@ ggplot(fit4.summary, aes(n_eff)) +
   geom_vline(xintercept = 400, lty=2) +
   theme_classic() +
   labs(x = "effective sample size")
+
+#plot PPC
+model.pars4 <- rstan::extract(fits[[5]])
+logRS_rep <- model.pars4$logRS_rep
+
+ppc_dens_overlay(logRS, logRS_rep) +
+  theme(legend.position = "none") +
+  labs(y = "density", x = "y_est")
+
 ```
 
 ```{r get draws}
