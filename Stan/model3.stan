@@ -2,6 +2,7 @@ data {
   int<lower=1> N; //length of data
   int<lower=1> J; //n pops
   vector[N] logRS; //the response variable
+  int<lower=1> pop[N]; //vector indexing populaitons
   vector[J] SmaxPR; //Smax estimates for each pop
   vector[J] SmaxPR_SD; //Smax error for each pop
   matrix[N,J] X; //predictor matrix of spawners
@@ -20,8 +21,8 @@ transformed data{
 
 parameters {
   vector<lower=0>[J] log_a_pop; //populations' alpha estimates
-  vector<lower=0>[J] log_b_pop; //populations' beta estimates
-  real<lower=0> sigma; //error
+  vector[J] log_b_pop; //populations' beta estimates
+  vector<lower=0>[J] sigma_pop; //error
 }
 
 transformed parameters {
@@ -33,14 +34,19 @@ model {
   //priors
   log_a_pop ~ normal(1.5,2);
   log_b_pop ~ normal(logbeta_pr, logbeta_pr_sig); 
-
-  sigma ~ normal(1,1); 
-  //likelihood model
-  logRS ~ normal(int_X*log_a_pop - X*b_pop, sigma);
+  sigma_pop ~ normal(1,1);
+  
+  //likelihood
+  logRS ~ normal(int_X*log_a_pop - X*b_pop, sigma_pop[pop]);
 }
 
 generated quantities{
   vector[N]  log_lik; 
-  for (i in 1:N){log_lik[i] = normal_lpdf(logRS[i] | int_X[i]*log_a_pop - X[i]*b_pop, sigma);
+  for (i in 1:N){log_lik[i] = normal_lpdf(logRS[i] | int_X[i]*log_a_pop - X[i]*b_pop, sigma_pop);
   }
+  vector[J] Smax_pop; //calc Smax directly
+  for (i in 1:J){Smax_pop[i] = 1/b_pop[i]; 
+  }
+  array[N] real logRS_rep; //posterior predictive check
+  logRS_rep = normal_rng(int_X*log_a_pop - X*b_pop, sigma_pop[pop]);
 }
