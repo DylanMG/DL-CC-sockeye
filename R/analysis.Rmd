@@ -40,8 +40,7 @@ set.seed(123)
 
 knitr::opts_chunk$set(warning = FALSE, 
                       message = FALSE,
-                      echo = FALSE,
-                      fig.path = paste0(here("output/plots"), "/"))
+                      echo = FALSE)
 ```
 # Background  
 This is the analysis supporting the paper see [Supplement 1](https://dylanmg.github.io/DL-CC-sockeye/output/html/S1_get_Smax_PR.html#Age_structure) for the calculation of $S_{MAX_{PR}}$ and [Supplement 2](https://dylanmg.github.io/DL-CC-sockeye/output/html/S2_diagnostics_figs.html#Posterior_distributions) for model diagnostics.  
@@ -265,7 +264,7 @@ if("m4" %in% list.files(here("output/model_fits")) & refit == FALSE){
              data=stan_data, 
              model_name = "m4",  
              iter = 4000)
-  saveRDS(m4, file = here("output/model_fits/m4_ind-sigs"))
+  saveRDS(m4, file = here("output/model_fits/m4"))
 }
 ```
 
@@ -491,7 +490,7 @@ for(i in thinned_models){
 
 #get draws from thinned models------------------------------------------------------------
 
-#computationally expensive be patient
+#computationally expensive: be patient
 thinned_draws <- map2(thinned_fits, 
                       c(paste0("m1_", thinned_models),
                         paste0("m2a_", thinned_models),
