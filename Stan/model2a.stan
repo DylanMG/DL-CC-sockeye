@@ -26,7 +26,7 @@ model {
   log_a ~ normal(1.5,2);//priors
   sd_a_pop ~ gamma(2,3);  
   log_a_pop ~ normal(log_a, sd_a_pop);
-  log_b_pop ~ normal(-12, 3);
+  log_b_pop ~ normal(-12, 5);
   
   sigma ~ normal(1,1); //variance priors
   sd_sigma_pop ~ normal(0,1);

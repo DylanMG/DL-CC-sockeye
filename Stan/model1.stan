@@ -21,7 +21,7 @@ transformed parameters {
 model {
   //priors
   log_a_pop ~ normal(1.5,2);
-  log_b_pop ~ normal(-12, 3);
+  log_b_pop ~ normal(-12, 5);
   sigma_pop ~ normal(1,1);
 
   //likelihood
