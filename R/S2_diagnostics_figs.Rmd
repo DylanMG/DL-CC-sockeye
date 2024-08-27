@@ -90,7 +90,7 @@ colnames(pop_data) <- tolower(colnames(pop_data))
 ```
 
 ## Diagnostics  
-Here we check if chains have mixed, the maximum $\hat{R}$ is less than 1.05, and that the effective sample size is at least 10% of the iterations, or in our case 400. 
+Here we check if chains have mixed, the maximum $\hat{R}$ is less than 1.05, and that the effective sample size is at least 10% of the iterations, or in our case 800. 
 
 ### Model 1  
 Fits for each population with uninformative priors. We won't plot any `mcmc_combo()` for this because there's too many parameters (3 leading parameters per population[$\alpha$, $\beta$ and $\sigma$], since all are fit independently) to nicely visualize in a summary doc. You can fork the [code](https://github.com/DylanMG/sockeye-hab-SRR-Stan/blob/main/R/model_fitting_comparison.Rmd) and run `rstanarm::launch_shinystan()` to check  models if you want. Just look at the sigma as a check, then report max Rhats later.  
@@ -100,7 +100,7 @@ mcmc_combo(fits[[1]], combo = c("dens_overlay", "trace"),
            gg_theme = legend_none())
 fit1.summary  <- as.data.frame(rstan::summary(fits[[1]])$summary)
 paste("max R-hat =", max(fit1.summary$Rhat, na.rm = TRUE))
-paste("min ESS =", min(fit1.summary$n_eff, na.rm = TRUE)/4000)
+paste("min ESS =", min(fit1.summary$n_eff, na.rm = TRUE)/8000, "%")
 
 ggplot(fit1.summary, aes(n_eff)) +
   geom_histogram() +
@@ -126,7 +126,7 @@ mcmc_combo(fits[[2]], combo = c("dens_overlay", "trace"),
            gg_theme = legend_none())
 fit2a.summary  <- as.data.frame(rstan::summary(fits[[2]])$summary)
 paste("max R-hat =", max(fit2a.summary$Rhat, na.rm = TRUE))
-paste("min ESS =", min(fit2a.summary$n_eff, na.rm = TRUE)/4000)
+paste("min ESS =", min(fit2a.summary$n_eff, na.rm = TRUE)//8000, "%")
 #loo(fits[[2]])
 #plot(loo(fits[[2]]))
 ggplot(fit2a.summary, aes(n_eff)) +
@@ -155,7 +155,7 @@ mcmc_combo(fits[[3]], combo = c("dens_overlay", "trace"),
            gg_theme = legend_none()) 
 fit2b.summary  <- as.data.frame(rstan::summary(fits[[3]])$summary)
 paste("max R-hat =", max(fit2b.summary$Rhat, na.rm = TRUE))
-paste("min ESS =", min(fit2b.summary$n_eff, na.rm = TRUE))
+paste("min ESS =", min(fit2b.summary$n_eff, na.rm = TRUE)/8000, "%")
 #loo(fits[[3]])
 #plot(loo(fits[[3]]))
 ggplot(fit2b.summary, aes(n_eff)) +
@@ -181,7 +181,7 @@ mcmc_combo(fits[[4]], combo = c("dens_overlay", "trace"),
            gg_theme = legend_none())
 fit3.summary  <- as.data.frame(rstan::summary(fits[[4]])$summary)
 paste("max R-hat =", max(fit3.summary$Rhat, na.rm = TRUE))
-paste("min ESS =", min(fit3.summary$n_eff, na.rm = TRUE))
+paste("min ESS =", min(fit3.summary$n_eff, na.rm = TRUE)/8000, "%")
 #loo(fits[[4]])
 #plot(loo(fits[[4]]))
 ggplot(fit3.summary, aes(n_eff)) +
@@ -207,7 +207,7 @@ mcmc_combo(fits[[5]], combo = c("dens_overlay", "trace"),
            gg_theme = legend_none())
 fit4.summary  <- as.data.frame(rstan::summary(fits[[5]])$summary)
 paste("max R-hat =", max(fit4.summary$Rhat, na.rm = TRUE))
-paste("min ESS =", min(fit4.summary$n_eff, na.rm = TRUE))
+paste("min ESS =", min(fit4.summary$n_eff, na.rm = TRUE)/8000, "%")
 #loo(fits[[5]])
 #plot(loo(fits[[5]]))
 ggplot(fit4.summary, aes(n_eff)) +
