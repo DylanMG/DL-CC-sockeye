@@ -216,6 +216,7 @@ rm(logRS, N, pop, J, K, region, reg_pop, X, int_X, SmaxPR, SmaxPR_SD)
 
 ```{r fits, results= "hide"}
 refit <- FALSE #toggle if you want to refit models or used the stored model fits
+iter <- 8000
 
 if("m1" %in% list.files(here("output/model_fits")) & refit == FALSE){
   m1 <- readRDS(here("output/model_fits/m1"))
@@ -223,7 +224,7 @@ if("m1" %in% list.files(here("output/model_fits")) & refit == FALSE){
   m1 <- stan(here("Stan/model1.stan"), 
              data=stan_data, 
              model_name = "m1", 
-             iter = 4000)
+             iter = iter)
   saveRDS(m1, file = here("output/model_fits/m1"))
 }
 
@@ -233,7 +234,7 @@ if("m2a" %in% list.files(here("output/model_fits")) & refit == FALSE){
   m2a <- stan(here("Stan/model2a.stan"), 
               data=stan_data, 
               model_name = "m2a", 
-              iter = 4000) #SOMETIMES needs more iter to fit
+              iter = iter) #SOMETIMES needs more iter to fit
   saveRDS(m2a, file = here("output/model_fits/m2a"))
 }
 
@@ -243,7 +244,7 @@ if("m2b" %in% list.files(here("output/model_fits")) & refit == FALSE){
   m2b <- stan(here("Stan/model2b.stan"), 
               data=stan_data, 
               model_name = "m2b", 
-              iter = 4000)
+              iter = iter)
   saveRDS(m2b, file = here("output/model_fits/m2b"))
 }
 
@@ -253,7 +254,7 @@ if("m3" %in% list.files(here("output/model_fits")) & refit == FALSE){
   m3 <- stan(here("Stan/model3.stan"), 
              data=stan_data, 
              model_name = "m3", 
-             iter = 4000)
+             iter = iter)
   saveRDS(m3, file = here("output/model_fits/m3"))
 }
 
@@ -263,7 +264,7 @@ if("m4" %in% list.files(here("output/model_fits")) & refit == FALSE){
   m4 <- stan(here("Stan/model4_ind-sigs.stan"), 
              data=stan_data, 
              model_name = "m4",  
-             iter = 4000)
+             iter = iter)
   saveRDS(m4, file = here("output/model_fits/m4"))
 }
 ```
