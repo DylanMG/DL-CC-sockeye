@@ -31,6 +31,7 @@ transformed parameters {
 model {
   log_a ~ normal(1.5,2); //priors
   sd_a_pop ~ gamma(2,3);
+  sd_a_region ~ normal(0,1);
   log_a_region ~ normal(0, sd_a_region);
   log_a_pop ~ normal(log_a + log_a_region[reg_pop], sd_a_pop);
   log_b_pop ~ normal(-12, 3);
