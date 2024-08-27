@@ -126,7 +126,7 @@ mcmc_combo(fits[[2]], combo = c("dens_overlay", "trace"),
            gg_theme = legend_none())
 fit2a.summary  <- as.data.frame(rstan::summary(fits[[2]])$summary)
 paste("max R-hat =", max(fit2a.summary$Rhat, na.rm = TRUE))
-paste("min ESS =", min(fit2a.summary$n_eff, na.rm = TRUE)//8000, "%")
+paste("min ESS =", min(fit2a.summary$n_eff, na.rm = TRUE)/8000, "%")
 #loo(fits[[2]])
 #plot(loo(fits[[2]]))
 ggplot(fit2a.summary, aes(n_eff)) +
@@ -151,7 +151,7 @@ mcmc_combo(fits[[3]], combo = c("dens_overlay", "trace"),
            pars = c("log_a",  "sd_a_pop", "sigma", "sd_sigma_pop", "lp__"), 
            gg_theme = legend_none())
 mcmc_combo(fits[[3]], combo = c("dens_overlay", "trace"), 
-           pars = c("log_a_region[1]", "log_a_region[2]", "log_a_region[3]", "sd_a_region"), 
+           pars = c("z_dev_region[1]", "z_dev_region[2]", "z_dev_region[3]", "sd_a_region"), 
            gg_theme = legend_none()) 
 fit2b.summary  <- as.data.frame(rstan::summary(fits[[3]])$summary)
 paste("max R-hat =", max(fit2b.summary$Rhat, na.rm = TRUE))
