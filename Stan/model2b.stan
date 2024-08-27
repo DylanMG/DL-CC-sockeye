@@ -13,7 +13,8 @@ parameters {
   real log_a; //global alpha
   vector<lower=0>[J] log_a_pop; //population alpha deviations
   real<lower=0> sd_a_pop; //variance of means for pops
-  vector[K] log_a_region; //regional alpha deviations
+  //vector[K] log_a_region; //regional alpha deviations
+  vector[K] z_dev_region; //regional Z scores for deviations
   real<lower=0> sd_a_region; //variance of means for region
 
   vector[J] log_b_pop; //logged slopes
@@ -31,10 +32,12 @@ transformed parameters {
 model {
   log_a ~ normal(1.5,2); //priors
   sd_a_pop ~ gamma(2,3);
-  sd_a_region ~ normal(0,1);
-  log_a_region ~ normal(0, sd_a_region);
-  log_a_pop ~ normal(log_a + log_a_region[reg_pop], sd_a_pop);
-  log_b_pop ~ normal(-12, 3);
+  sd_a_region ~ gamma(2,3);
+  //log_a_region ~ normal(0, sd_a_region); //old way
+  //log_a_pop ~ normal(log_a + log_a_region[reg_pop], sd_a_pop); //old way
+  z_dev_region ~ normal(0,1);
+  log_a_pop ~ normal(log_a +z_dev_region*sd_a_region, sd_a_pop);
+  log_b_pop ~ normal(-12, 5);
   
   sigma ~ normal(1,1); //variance priors
   sd_sigma_pop ~ normal(0,1);
