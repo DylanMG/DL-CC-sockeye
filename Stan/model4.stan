@@ -20,12 +20,14 @@ transformed data{
 
 parameters {
   real log_a; //global alpha
+  real<lower=0> sd_a_pop; //variance of a means around pops
   vector<lower=0>[J] log_a_pop; //pop specific a's bound by 0
 
   vector[J] log_b_pop; //slopes for each pop 
   
   real<lower=0> sigma; //global variance term
-  real<lower=0> sd_a_pop; //variance of a means around pops
+  vector<lower=0>[J] sigma_pop; //pop specific sigmas bound by 0
+  real<lower=0> sd_sigma_pop; //variance of a means around pops
 }
 
 transformed parameters {
@@ -42,16 +44,18 @@ model {
   log_b_pop ~ normal(logbeta_pr, logbeta_pr_sig); 
   
   //variance priors
-  sigma ~ normal(1,1);
-
+  sigma ~ normal(1,1); //variance priors
+  sd_sigma_pop ~ normal(0,1);
+  sigma_pop ~ normal(sigma, sd_sigma_pop);
+  
   //likelihood model
-  logRS ~ normal(log_a_pop[pop] - X*b_pop, sigma);
+  logRS ~ normal(log_a_pop[pop] - X*b_pop, sigma_pop[pop]);
 }
 
 //helper to get log_lik from extract_log_lik help file
 generated quantities{
   vector[N]  log_lik; 
-  for (i in 1:N){log_lik[i] = normal_lpdf(logRS[i] | log_a_pop[pop[i]] - X[i]*b_pop, sigma);
+  for (i in 1:N){log_lik[i] = normal_lpdf(logRS[i] | log_a_pop[pop[i]] - X[i]*b_pop, sigma_pop[pop[i]]);
   }
     vector[J] Smax_pop; 
   for (i in 1:J){Smax_pop[i] = 1/b_pop[i]; //calc Smax directly
