@@ -216,7 +216,7 @@ rm(logRS, N, pop, J, K, region, reg_pop, X, int_X, SmaxPR, SmaxPR_SD)
 
 ```{r fits, results= "hide"}
 refit <- FALSE #toggle if you want to refit models or used the stored model fits
-iter <- 4000
+iter <- 10000
 
 if("m1" %in% list.files(here("output/model_fits")) & refit == FALSE){
   m1 <- readRDS(here("output/model_fits/m1"))
@@ -345,7 +345,7 @@ fig1_data <- all_draws |>
 ## Thinning exercise  
   #We'll also take different amounts of data from Meziadin, which is a heavily monitored 
   #wild population that has high #quality age and escapement data.
-
+if(FALSE){
 thin <- c(.2, .4, .6, .8, 1)
 
 thinning_pops <- "meziadin"  #set up robustly in case one wants multiple pops
@@ -533,6 +533,7 @@ Smsy_bias <- thinned_draws |>
          thin = gsub("-", ".", thin, fixed = TRUE))
 
 write.csv(Smsy_bias, here("output/data/Smsy_bias.csv"))
+}
 ```
 # Figures  
 
@@ -778,6 +779,7 @@ $S_{MSY}$ posterior densities across varying amounts of data in data rich popula
 
 Percent differences (i.e. bias) relative to the full data m4 median.  
 ```{r fig 4, fig.width=5.62, fig.height=4.215, dpi= 300}
+if(FALSE){
 p <- ggplot(Smsy_bias, aes(n_data, perc_diff_Smsy))+
    geom_violin(fill = "grey",
               draw_quantiles = 0.5) +
@@ -800,6 +802,7 @@ ggsave(here("output/pub_figs/fig4.png"),
        dpi = 300)
 
 print(p)
+}
 ```
 
 ### Figure ?  
