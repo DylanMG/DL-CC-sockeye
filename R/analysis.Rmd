@@ -34,6 +34,7 @@ library(patchwork) #to align multi-pane plots
 library(grid) #to help patchwork with fonts
 library(gsl) #for lambert_W0()
 library(shinystan)
+library(DT) #for making a nice html table 
 source(here("R/functions.R"))
 
 set.seed(123)
@@ -215,8 +216,8 @@ rm(logRS, N, pop, J, K, region, reg_pop, X, int_X, SmaxPR, SmaxPR_SD)
 ```
 
 ```{r fits, results= "hide"}
-refit <- FALSE #toggle if you want to refit models or used the stored model fits
-iter <- 10000
+refit <- TRUE #toggle if you want to refit models or used the stored model fits
+iter <- 4000
 
 if("m1" %in% list.files(here("output/model_fits")) & refit == FALSE){
   m1 <- readRDS(here("output/model_fits/m1"))
@@ -261,7 +262,7 @@ if("m3" %in% list.files(here("output/model_fits")) & refit == FALSE){
 if("m4" %in% list.files(here("output/model_fits")) & refit == FALSE){
   m4 <- readRDS(here("output/model_fits/m4"))
 } else{
-  m4 <- stan(here("Stan/model4_ind-sigs.stan"), 
+  m4 <- stan(here("Stan/model4.stan"), 
              data=stan_data, 
              model_name = "m4",  
              iter = iter)
@@ -535,6 +536,19 @@ Smsy_bias <- thinned_draws |>
 write.csv(Smsy_bias, here("output/data/Smsy_bias.csv"))
 }
 ```
+
+# Tables  
+
+Table 1. looic among models  
+```{r table1}
+#table1 <- get_loo_table(models)
+
+data.table(table1,
+          rownames = FALSE,
+          options = list(dom = 't'))
+write.csv(table1, here("output/pub_tables/table1.csv"), row.names = FALSE)
+```
+
 # Figures  
 
 ### Figure 1  
