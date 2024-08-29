@@ -31,7 +31,7 @@ model {
 //helper to get log_lik from extract_log_lik help file
 generated quantities{
   vector[N]  log_lik; 
-  for (i in 1:N){log_lik[i] = normal_lpdf(logRS[i] | int_X[i]*log_a_pop - X[i]*b_pop , sigma_pop);
+  for (i in 1:N){log_lik[i] = normal_lpdf(logRS[i] | int_X[i]*log_a_pop - X[i]*b_pop , sigma_pop[pop[i]]);
   }
   vector[J] Smax_pop; //calc Smax directly
   for (i in 1:J){Smax_pop[i] = 1/b_pop[i]; 

@@ -46,7 +46,7 @@ model {
 generated quantities {
   vector[N] log_lik;
   for (i in 1:N){
-    log_lik[i] = normal_lpdf(logRS[i] | log_a_pop[pop[i]] - X[i]*b_pop, sigma_pop[pop]);
+    log_lik[i] = normal_lpdf(logRS[i] | log_a_pop[pop[i]] - X[i]*b_pop, sigma_pop[pop[i]]);
   }
   vector[J] Smax_pop; //calc Smax directly
   for (i in 1:J){Smax_pop[i] = 1/b_pop[i]; 
