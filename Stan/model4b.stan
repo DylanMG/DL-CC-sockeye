@@ -1,9 +1,11 @@
 data {
   int<lower=1> N; //length of data
-  int<lower=1> J; //n pops
-  int<lower=1> pop[N]; //vector indexing populations
-  matrix[N, J] X; //predictor matrix of spawners
-  vector[N] logRS; //the response variable
+  int<lower=1> J; //n pops 
+  int<lower=1> K; //n regions
+  matrix[N, J] X; //predictor matrix of spawners 
+  vector[N] logRS; //outcome variable
+  int<lower=1> pop[N]; //vector indexing populaitons
+  int<lower=1> reg_pop[J]; //region-pop index
   vector[J] SmaxPR; //Smax estimates for each pop
   vector[J] SmaxPR_SD; //Smax error for each pop
 }
@@ -20,10 +22,12 @@ transformed data{
 
 parameters {
   real log_a; //global alpha
-  real<lower=0> sd_a_pop; //variance of a means around pops
-  vector<lower=0>[J] log_a_pop; //pop specific a's bound by 0
+  vector<lower=0>[J] log_a_pop; //population alpha deviations
+  real<lower=0> sd_a_pop; //variance of means for pops
+  vector[K] z_dev_region; //regional Z scores for deviations
+  real<lower=0> sd_a_region; //variance of means for region
 
-  vector[J] log_b_pop; //slopes for each pop 
+  vector[J] log_b_pop; //logged slopes
   
   real<lower=0> sigma; //global variance term
   vector<lower=0>[J] sigma_pop; //pop specific sigmas bound by 0
@@ -36,10 +40,11 @@ transformed parameters {
 }
 
 model {
-  //priors
-  log_a ~ normal(1.5,2);
-  sd_a_pop ~ gamma(2,3);  
-  log_a_pop ~ normal(log_a, sd_a_pop);
+  log_a ~ normal(1.5,2); //priors
+  sd_a_pop ~ gamma(2,3);
+  sd_a_region ~ gamma(2,3);
+  z_dev_region ~ normal(0,1);
+  log_a_pop ~ normal(log_a +z_dev_region[reg_pop]*sd_a_region, sd_a_pop);
   
   log_b_pop ~ normal(logbeta_pr, logbeta_pr_sig); 
   
@@ -60,4 +65,6 @@ generated quantities{
     vector[J] Smax_pop; 
   for (i in 1:J){Smax_pop[i] = 1/b_pop[i]; //calc Smax directly
   }
+  array[N] real logRS_rep; //posterior predictive check
+  logRS_rep = normal_rng(log_a_pop[pop] - X*b_pop, sigma_pop[pop]);
 }
