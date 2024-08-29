@@ -259,58 +259,24 @@ if("m3" %in% list.files(here("output/model_fits")) & refit == FALSE){
   saveRDS(m3, file = here("output/model_fits/m3"))
 }
 
-if("m4" %in% list.files(here("output/model_fits")) & refit == FALSE){
-  m4 <- readRDS(here("output/model_fits/m4"))
+if("m4a" %in% list.files(here("output/model_fits")) & refit == FALSE){
+  m4a <- readRDS(here("output/model_fits/m4a"))
 } else{
-  m4 <- stan(here("Stan/model4.stan"), 
+  m4a <- stan(here("Stan/model4a.stan"), 
              data=stan_data, 
-             model_name = "m4",  
+             model_name = "m4a",  
              iter = iter)
-  saveRDS(m4, file = here("output/model_fits/m4"))
+  saveRDS(m4a, file = here("output/model_fits/m4a"))
 }
-```
 
-```{r diag}
-if(FALSE){ #testing stuff while parameterizing models and choosing priors
-fit1.summary  <- as.data.frame(rstan::summary(m1)$summary)
-
-bayesAB::plotNormal(exp(-12),exp(3))
-bayesAB::plotGamma(3,2)
-
-mcmc_combo(m4, combo = c("dens_overlay", "trace"), 
-           pars = c("log_a", "sd_a_pop","sd_sigma_pop", "sigma", "lp__"), 
-           #pars = c("log_a", "sd_a_pop", "sigma", "lp__"), 
-           gg_theme = legend_none())
-fit4.summary  <- as.data.frame(rstan::summary(m4)$summary)
-write.csv(fit4.summary, "C:/Users/GLASERD/Desktop/fit-4-reparm-no-region.csv", row.names = F)
-
-m4 <- readRDS(here("output/model_fits/m4_reparm_no-region")) 
-m4_ind_sig <- readRDS(here("output/model_fits/m4_reparm_no-region_ind-sigs"))
-
-m4.summary  <- as.data.frame(rstan::summary(m4)$summary) |>
-  mutate(parm = rownames(m4.summary))
-
-m4.ind.summary  <- as.data.frame(rstan::summary(m4_ind_sig)$summary)|>
-  mutate(parm = rownames(m4.ind.summary))
-
-launch_shinystan(m2a)
-
-#compare smax
-Smax_diff <- bind_rows(data.frame(pop = pop_data$pop, 
-                                  model = "shared-sig",
-                        Smax = slice(m4.summary, grep("Smax", m4.summary$parm))$`50%`, 
-                        Smax_LCI = slice(m4.summary, grep("Smax", m4.summary$parm))$`25%`,
-                        Smax_UCI = slice(m4.summary, grep("Smax", m4.summary$parm))$`75%`),
-                        data.frame(pop = pop_data$pop,
-                                   model = "ind-sigs",
-                                   Smax = slice(m4.ind.summary, grep("Smax", m4.ind.summary$parm))$`50%`,
-                        Smax_LCI = slice(m4.ind.summary, grep("Smax", m4.ind.summary$parm))$`25%`,
-                        Smax_UCI = slice(m4.ind.summary, grep("Smax", m4.ind.summary$parm))$`75%`))
-
-
-ggplot(Smax_diff) +
-  geom_point(aes(x = Smax, y = pop, color = model), alpha = 0.5) +
-  geom_errorbarh(aes(y = pop, xmin = Smax_LCI, xmax=Smax_UCI, color = model), alpha = 0.5)
+if("m4b" %in% list.files(here("output/model_fits")) & refit == FALSE){
+  m4b <- readRDS(here("output/model_fits/m4b"))
+} else{
+  m4b <- stan(here("Stan/model4b.stan"), 
+             data=stan_data, 
+             model_name = "m4b",  
+             iter = iter)
+  saveRDS(m4a, file = here("output/model_fits/m4b"))
 }
 ```
 
@@ -321,7 +287,8 @@ models <- list(m1=m1,
                m2a=m2a, 
                m2b=m2b, 
                m3=m3, 
-               m4=m4)
+               m4a=m4a, 
+               m4b = m4b)
 #get some data for figs ready
 all_draws <- get_draws(models, pop_data)
 ```
@@ -541,7 +508,7 @@ write.csv(Smsy_bias, here("output/data/Smsy_bias.csv"))
 
 Table 1. looic among models  
 ```{r table1}
-#table1 <- get_loo_table(models)
+table1 <- get_loo_table(models)
 
 data.table(table1,
           rownames = FALSE,
