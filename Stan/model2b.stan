@@ -5,7 +5,6 @@ data {
   matrix[N, J] X; //predictor matrix of spawners 
   vector[N] logRS; //outcome variable
   int<lower=1> pop[N]; //vector indexing populaitons
-  int<lower=1> region[N]; //vector indexing regions
   int<lower=1> reg_pop[J]; //region-pop index
 }
 

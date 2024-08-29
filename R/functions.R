@@ -23,7 +23,7 @@ get_loo_table <- function(x){
   looic <- map(x, ~round(loo(.x)$estimates[3,1], 2)) |>
     unlist() |>
     cbind(map(x, ~.x@model_name) |>
-            unlist())
+            unlist()) #just getting model name
   
   loos <- map(x, ~loo(.x)) #keen to learn a more eloquent way & not run loo 2x.
     
