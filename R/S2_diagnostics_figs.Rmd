@@ -39,12 +39,15 @@ source(here("R/functions.R"))
 
 knitr::opts_chunk$set(warning = FALSE, 
                       message = FALSE,
-                      echo = FALSE)
+                      echo = FALSE,
+                      scipen = 1, 
+                      digits = 4)
 ```
 # Background  
 These are some model diagnostics and posteriors from the spawner-recruit analyses in the article mentioned above.
 ```{r load fits and data}
-models <- c("m1", "m2a", "m2b", "m3", "m4")
+iter <- 4000 #whatever iterations were run in analysis.Rmd, for plotting ESS
+models <- c("m1", "m2a", "m2b", "m3", "m4a", "m4b")
 
 #use map to read in all model fits as list
 fits <- map(models, function(x){
@@ -100,11 +103,12 @@ mcmc_combo(fits[[1]], combo = c("dens_overlay", "trace"),
            gg_theme = legend_none())
 fit1.summary  <- as.data.frame(rstan::summary(fits[[1]])$summary)
 paste("max R-hat =", max(fit1.summary$Rhat, na.rm = TRUE))
-paste("min ESS =", min(fit1.summary$n_eff, na.rm = TRUE)/8000, "%")
-
+paste("min ESS =", min(fit1.summary$n_eff, na.rm = TRUE)/iter, "%")
+loo(fits[[1]])
+plot(loo(fits[[1]]))
 ggplot(fit1.summary, aes(n_eff)) +
   geom_histogram() +
-  geom_vline(xintercept = 400, lty=2) + #could annotate a "10%" here too 
+  geom_vline(xintercept = iter*.1, lty=2) + #could annotate a "10%" here too 
   theme_classic() +
   labs(x = "effective sample size")
 
@@ -126,12 +130,12 @@ mcmc_combo(fits[[2]], combo = c("dens_overlay", "trace"),
            gg_theme = legend_none())
 fit2a.summary  <- as.data.frame(rstan::summary(fits[[2]])$summary)
 paste("max R-hat =", max(fit2a.summary$Rhat, na.rm = TRUE))
-paste("min ESS =", min(fit2a.summary$n_eff, na.rm = TRUE)/8000, "%")
-#loo(fits[[2]])
-#plot(loo(fits[[2]]))
+paste("min ESS =", min(fit2a.summary$n_eff, na.rm = TRUE)/iter, "%")
+loo(fits[[2]])
+plot(loo(fits[[2]]))
 ggplot(fit2a.summary, aes(n_eff)) +
   geom_histogram() +
-  geom_vline(xintercept = 400, lty=2) +
+  geom_vline(xintercept = iter*.1, lty=2) +
   theme_classic() +
   labs(x = "effective sample size")
 
@@ -155,12 +159,12 @@ mcmc_combo(fits[[3]], combo = c("dens_overlay", "trace"),
            gg_theme = legend_none()) 
 fit2b.summary  <- as.data.frame(rstan::summary(fits[[3]])$summary)
 paste("max R-hat =", max(fit2b.summary$Rhat, na.rm = TRUE))
-paste("min ESS =", min(fit2b.summary$n_eff, na.rm = TRUE)/8000, "%")
-#loo(fits[[3]])
-#plot(loo(fits[[3]]))
+paste("min ESS =", min(fit2b.summary$n_eff, na.rm = TRUE)/iter, "%")
+loo(fits[[3]])
+plot(loo(fits[[3]]))
 ggplot(fit2b.summary, aes(n_eff)) +
   geom_histogram() +
-  geom_vline(xintercept = 400, lty=2) +
+  geom_vline(xintercept = iter*.1, lty=2) +
   theme_classic() +
   labs(x = "effective sample size")
 
@@ -181,12 +185,12 @@ mcmc_combo(fits[[4]], combo = c("dens_overlay", "trace"),
            gg_theme = legend_none())
 fit3.summary  <- as.data.frame(rstan::summary(fits[[4]])$summary)
 paste("max R-hat =", max(fit3.summary$Rhat, na.rm = TRUE))
-paste("min ESS =", min(fit3.summary$n_eff, na.rm = TRUE)/8000, "%")
-#loo(fits[[4]])
-#plot(loo(fits[[4]]))
+paste("min ESS =", min(fit3.summary$n_eff, na.rm = TRUE)/iter, "%")
+loo(fits[[4]])
+plot(loo(fits[[4]]))
 ggplot(fit3.summary, aes(n_eff)) +
   geom_histogram() +
-  geom_vline(xintercept = 400, lty=2) +
+  geom_vline(xintercept = iter*.1, lty=2) +
   theme_classic() +
   labs(x = "effective sample size")
 
@@ -199,26 +203,56 @@ ppc_dens_overlay(logRS, logRS_rep) +
   labs(y = "density", x = "y_est")
 ```
 
-### Model 4
-Informative, hierarchical $\alpha$ based on model performance in model 2 (i.e. grouped $\alpha$ or not), with informative priors on data based on Smax_PR.   
-```{r m4-diag}
+### Model 4a
+Informative, hierarchical $\alpha$ with informative priors on data based on Smax_PR.   
+```{r m4a-diag}
 mcmc_combo(fits[[5]], combo = c("dens_overlay", "trace"), 
            pars = c("log_a",  "sd_a_pop", "sigma", "sd_sigma_pop", "lp__"), 
            gg_theme = legend_none())
-fit4.summary  <- as.data.frame(rstan::summary(fits[[5]])$summary)
-paste("max R-hat =", max(fit4.summary$Rhat, na.rm = TRUE))
-paste("min ESS =", min(fit4.summary$n_eff, na.rm = TRUE)/8000, "%")
-#loo(fits[[5]])
-#plot(loo(fits[[5]]))
-ggplot(fit4.summary, aes(n_eff)) +
+fit4a.summary  <- as.data.frame(rstan::summary(fits[[5]])$summary)
+paste("max R-hat =", max(fit4a.summary$Rhat, na.rm = TRUE))
+paste("min ESS =", min(fit4a.summary$n_eff, na.rm = TRUE)/iter, "%")
+loo(fits[[5]])
+plot(loo(fits[[5]]))
+ggplot(fit4a.summary, aes(n_eff)) +
   geom_histogram() +
-  geom_vline(xintercept = 400, lty=2) +
+  geom_vline(xintercept = iter*.1, lty=2) +
   theme_classic() +
   labs(x = "effective sample size")
 
 #plot PPC
-model.pars4 <- rstan::extract(fits[[5]])
-logRS_rep <- model.pars4$logRS_rep
+model.pars4a <- rstan::extract(fits[[5]])
+logRS_rep <- model.pars4a$logRS_rep
+
+ppc_dens_overlay(logRS, logRS_rep) +
+  theme(legend.position = "none") +
+  labs(y = "density", x = "y_est")
+
+```
+
+### Model 4b
+Informative, regionally grouped hierarchical $\alpha$ with informative priors on data based on Smax_PR.   
+```{r m4b-diag}
+mcmc_combo(fits[[6]], combo = c("dens_overlay", "trace"), 
+           pars = c("log_a",  "sd_a_pop", "sigma", "sd_sigma_pop", "lp__"), 
+           gg_theme = legend_none())
+mcmc_combo(fits[[6]], combo = c("dens_overlay", "trace"), 
+           pars = c("z_dev_region[1]", "z_dev_region[2]", "z_dev_region[3]", "sd_a_region"), 
+           gg_theme = legend_none()) 
+fit4b.summary  <- as.data.frame(rstan::summary(fits[[6]])$summary)
+paste("max R-hat =", max(fit4b.summary$Rhat, na.rm = TRUE))
+paste("min ESS =", min(fit4b.summary$n_eff, na.rm = TRUE)/iter, "%")
+loo(fits[[6]])
+plot(loo(fits[[6]]))
+ggplot(fit4b.summary, aes(n_eff)) +
+  geom_histogram() +
+  geom_vline(xintercept = iter*.1, lty=2) +
+  theme_classic() +
+  labs(x = "effective sample size")
+
+#plot PPC
+model.pars4b <- rstan::extract(fits[[6]])
+logRS_rep <- model.pars4b$logRS_rep
 
 ppc_dens_overlay(logRS, logRS_rep) +
   theme(legend.position = "none") +
@@ -249,11 +283,11 @@ reg_prod <- all_draws |>
 
 #get median Smsy from model 4 for Will 
 M4_Smsy <- all_draws |>
-  filter(model == "m4") |>
+  filter(model == "m4a") |>
   group_by(pop) |>
   summarise(Smsy_med = median(Smsy))
 
-write.csv(M4_Smsy, here("output/data/M4_Smsy_med.csv"), row.names = FALSE)
+write.csv(M4_Smsy, here("output/data/M4a_Smsy_med.csv"), row.names = FALSE)
 ```
 
 ## Posterior distributions  
@@ -358,11 +392,12 @@ for(i in 1:pages){
 ### Models 1 and 4 fit to data
 
 ```{r m1 & m4 to data}
+if(FALSE){
 fig_preds <- NULL
 fig_data <- NULL
 
 for(i in unique(all_draws$pop)){
-  for(j in c("m1", "m4")){ #add or adjust the models as seen fit
+  for(j in c("m1", "m4a")){ #add or adjust the models as seen fit
     sub_draw <- filter(all_draws, pop==i, model==j)
     sub_dat <- filter(SR_data, pop==gsub(" ", "-", tolower(i)))
     
@@ -427,5 +462,6 @@ for(i in 1:pages){
 
   print(p)
   j <- j + max_facets
+}
 }
 ```
