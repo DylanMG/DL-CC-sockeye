@@ -108,13 +108,13 @@ for(i in 1:pages){
   
   p <- ggplot(sub_dat, 
               aes(exp_spawn/1000, total_rec)) +
-              #aes(exp_spawn_scaled, logRS)) +
     geom_point() +
     ggh4x::facet_wrap2(vars(pop), 
                        nrow=(max_facets/4), 
                        ncol=(max_facets/4), 
                        trim_blank=FALSE,
                        scales = "free") +
+    expand_limits(x = 0, y = 0) +
     labs(title = paste0("Sockeye spawner-recruit relationship (", i, " of ", pages, ")"), 
          y = "Recruits", 
          x = "Spawners (thousands)") +
@@ -140,8 +140,8 @@ for(i in 1:pages){
   
   p <- ggplot(sub_dat, 
               aes(exp_spawn/1000, logRS)) +
-              #aes(exp_spawn_scaled, logRS)) +
     geom_point() +
+    expand_limits(x = 0, y = 0) +
     ggh4x::facet_wrap2(vars(pop), 
                        nrow=(max_facets/4), 
                        ncol=(max_facets/4), 
@@ -216,7 +216,7 @@ rm(logRS, N, pop, J, K, region, reg_pop, X, int_X, SmaxPR, SmaxPR_SD)
 ```
 
 ```{r fits, results= "hide"}
-refit <- TRUE #toggle if you want to refit models or used the stored model fits
+refit <- FALSE #toggle if you want to refit models or used the stored model fits
 iter <- 4000
 
 if("m1" %in% list.files(here("output/model_fits")) & refit == FALSE){
@@ -276,7 +276,7 @@ if("m4b" %in% list.files(here("output/model_fits")) & refit == FALSE){
              data=stan_data, 
              model_name = "m4b",  
              iter = iter)
-  saveRDS(m4a, file = here("output/model_fits/m4b"))
+  saveRDS(m4b, file = here("output/model_fits/m4b"))
 }
 ```
 
@@ -296,13 +296,13 @@ all_draws <- get_draws(models, pop_data)
 And also look at $S_{MSY}$ varied between the top 2 models. This is some data we'll use for figure 1.  
 ``` {r fig 1 data}
 fig1_data <- all_draws |>
-  filter(model %in% c("m2b", "m4")) |> #THIS is what you change to compare different models 
+  filter(model %in% c("m2b", "m4a")) |> #THIS is what you change to compare different models 
   group_by(model, pop) |>
   summarise(CV = round(sd(Smsy)/mean(Smsy), 2)) |>
   pivot_wider(names_from = model, 
               values_from = CV) |>
-  mutate(perc_diff_CV = perc_diff(m2b, m4), 
-         diff_CV = m2b - m4, 
+  mutate(perc_diff_CV = perc_diff(m2b, m4a), 
+         diff_CV = m2b - m4a, 
          diff_CV_percentage = diff_CV*100) |>
   left_join(select(pop_data, pop, region, est_origin, water_clarity, years, sr_pairs),
             by = "pop")
@@ -438,20 +438,31 @@ for(i in thinned_models){
   saveRDS(m3_thin, file = here(paste0("output/model_fits/thinning/m3_", i)))
 }
   
-  if(paste0("m4_", i) %in% list.files(here("output/model_fits/thinning")) & refit == FALSE){
-  m4_thin <- readRDS(here(paste0("output/model_fits/thinning/m4_", i)))
+  if(paste0("m4a_", i) %in% list.files(here("output/model_fits/thinning")) & refit == FALSE){
+  m4a_thin <- readRDS(here(paste0("output/model_fits/thinning/m4a_", i)))
 } else{
-  m4_thin <- stan(file=here("Stan/model4.stan"),
+  m4a_thin <- stan(file=here("Stan/model4a.stan"),
                   data=thinning_data[[j]], 
              iter = 4000)
-  saveRDS(m4_thin, file = here(paste0("output/model_fits/thinning/m4_", i)))
+  saveRDS(m4a_thin, file = here(paste0("output/model_fits/thinning/m4a_", i)))
+}
+  
+    if(paste0("m4b_", i) %in% list.files(here("output/model_fits/thinning")) & refit == FALSE){
+  m4b_thin <- readRDS(here(paste0("output/model_fits/thinning/m4b_", i)))
+} else{
+  m4b_thin <- stan(file=here("Stan/model4b.stan"),
+                  data=thinning_data[[j]], 
+             iter = 4000)
+  saveRDS(m4b_thin, file = here(paste0("output/model_fits/thinning/m4b_", i)))
 }
   
     thinned_fits[[j]] <- m1_thin
     thinned_fits[[j+length(thinned_models)]] <- m2a_thin #add the total # of models for each to index
     thinned_fits[[j+length(thinned_models)*2]] <- m2b_thin
     thinned_fits[[j+length(thinned_models)*3]] <- m3_thin
-    thinned_fits[[j+length(thinned_models)*4]] <- m4_thin
+    thinned_fits[[j+length(thinned_models)*4]] <- m4a_thin
+    thinned_fits[[j+length(thinned_models)*5]] <- m4b_thin
+
     
     j <- j + 1
 
@@ -465,7 +476,8 @@ thinned_draws <- map2(thinned_fits,
                         paste0("m2a_", thinned_models),
                         paste0("m2b_", thinned_models),
                         paste0("m3_", thinned_models), 
-                        paste0("m4_", thinned_models)),  
+                        paste0("m4a_", thinned_models), 
+                        paste0("m4b_", thinned_models)),  
     ~cbind(rstan:::.make_plot_data(.x, 
                                    pars = c("log_a_pop", "b_pop"))$samp, 
            model_name = rep(.y)))  |> #instead of get_draws() because of model naming issue*
@@ -489,7 +501,7 @@ thinned_draws <- map2(thinned_fits,
 
 #then get the smsy bias data--------------------------------------------------------------
 m4_median <- thinned_draws |>
-  filter(model == "m4", thin == 1) |>
+  filter(model == "m4a", thin == 1) |>
   group_by(pop) |>
   summarise(Smsy_med = median(Smsy))
 
@@ -510,9 +522,9 @@ Table 1. looic among models
 ```{r table1}
 table1 <- get_loo_table(models)
 
-data.table(table1,
-          rownames = FALSE,
-          options = list(dom = 't'))
+#data.table(table1, #BROKEN, swap to kable extra or something
+#          rownames = FALSE,
+#          options = list(dom = 't'))
 write.csv(table1, here("output/pub_tables/table1.csv"), row.names = FALSE)
 ```
 
