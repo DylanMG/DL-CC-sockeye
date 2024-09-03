@@ -127,6 +127,13 @@ for(i in unique(SR_data$pop)[1:3]){
   m4a_LL <- cbind(m4a_LL, extract(m4a)$log_lik)
   m4b_LL <- cbind(m4b_LL, extract(m4b)$log_lik)
   
+  write.csv(m1_LL, paste0(here("output/model_fits/CV/m1_LL_"),i))
+  write.csv(m2a_LL, paste0(here("output/model_fits/CV/m2a_LL_"),i))
+  write.csv(m2b_LL, paste0(here("output/model_fits/CV/m2b_LL_"),i))
+  write.csv(m3_LL, paste0(here("output/model_fits/CV/m3_LL_"),i))
+  write.csv(m4a_LL, paste0(here("output/model_fits/CV/m4a_LL_"),i))
+  write.csv(m4b_LL, paste0(here("output/model_fits/CV/m4b_LL_"),i))
+  
   end <- Sys.time()
   end - begin
 }
