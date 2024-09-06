@@ -159,7 +159,7 @@ loos_table <- loos |>
   select(Model, Metric, Estimate, SE) |>
   arrange(Metric, Estimate)
 rownames(loos_table) <- NULL
-write.csv(loos_table, "C:/Users/GLASERD/Desktop/loo_table_1.csv")
+write.csv(loos_table, here("output/CV/loo_table_run1.csv"))
 
 #need to get looic by pop, so make a single, long df with c(pop, model, metric, estimate, CV)
 pop.index <- as.data.frame(track_OOS) |> #could also index by region or data or whatever
@@ -204,6 +204,6 @@ for(i in unique(SR_data$pop)){
   
   j <- j+n.cols #advance index to start of next pop 
 }
- 
-
+write.csv(pop_loos, here("output/CV/pop_loos_run1.csv"))
+write.csv(pop_weights, here("output/CV/pop_weights_run1.csv"))
                      
