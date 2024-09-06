@@ -1,6 +1,7 @@
 library(tidyverse)
 library(here)
-library(rstan) 
+library(rstan)
+library(loo)
 set.seed(123)
 
 # wrangle and load data ------------------------------------------------------------------
@@ -38,8 +39,8 @@ m3_LL <- NULL
 m4a_LL <- NULL
 m4b_LL <- NULL
 
-#SR_data <- filter(SR_data, pop %in% unique(SR_data$pop)[1:10]) #subset for testing
-for(i in unique(SR_data$pop)[1:3]){
+track_OOS <- NULL #to track which data was pulled out for OOS
+for(i in unique(SR_data$pop)){ #can subset pops for testing here via indexing (e.g. [1:3])
   begin <- Sys.time()
   #could add "for j in 1:n_reps" or something to repeat sampling
   sub_pop <- filter(SR_data, pop == i)
@@ -52,7 +53,8 @@ for(i in unique(SR_data$pop)[1:3]){
     arrange(pop, year)
   
   OOS_pop <- anti_join(sub_pop, thinned_pop) #the data that was removed; to predict OOS
-  
+  track_OOS <- rbind(track_OOS, OOS_pop) #keep track of OOS obs
+
   #write new stan data ---
   logRS <- sub_data$logRS #response variable
   pop <- as.numeric(as.factor(sub_data$pop)) #pop index vector
@@ -127,21 +129,81 @@ for(i in unique(SR_data$pop)[1:3]){
   m4a_LL <- cbind(m4a_LL, extract(m4a)$log_lik)
   m4b_LL <- cbind(m4b_LL, extract(m4b)$log_lik)
   
-  write.csv(m1_LL, paste0(here("output/model_fits/CV/m1_LL_"),i))
-  write.csv(m2a_LL, paste0(here("output/model_fits/CV/m2a_LL_"),i))
-  write.csv(m2b_LL, paste0(here("output/model_fits/CV/m2b_LL_"),i))
-  write.csv(m3_LL, paste0(here("output/model_fits/CV/m3_LL_"),i))
-  write.csv(m4a_LL, paste0(here("output/model_fits/CV/m4a_LL_"),i))
-  write.csv(m4b_LL, paste0(here("output/model_fits/CV/m4b_LL_"),i))
+  #iteritevly write likeliehoods - may remove later.
+  write.csv(m1_LL, paste0(here("output/model_fits/CV/run 2/m1_LL_"),i,".csv"))
+  write.csv(m2a_LL, paste0(here("output/model_fits/CV/run 2/m2a_LL_"),i,".csv"))
+  write.csv(m2b_LL, paste0(here("output/model_fits/CV/run 2/m2b_LL_"),i,".csv"))
+  write.csv(m3_LL, paste0(here("output/model_fits/CV/run 2/m3_LL_"),i,".csv"))
+  write.csv(m4a_LL, paste0(here("output/model_fits/CV/run 2/m4a_LL_"),i,".csv"))
+  write.csv(m4b_LL, paste0(here("output/model_fits/CV/run 2/m4b_LL_"),i,".csv"))
   
   end <- Sys.time()
-  end - begin
+  print(end - begin)
 }
 
 #compute the loos
-loo(m1_LL)$estimates[3,1]
-loo(m2a_LL)$estimates[3,1]
-loo(m2b_LL)$estimates[3,1]
-loo(m3_LL)$estimates[3,1]
-loo(m4a_LL)$estimates[3,1]
-loo(m4b_LL)$estimates[3,1]
+loos <- as.data.frame(rbind(loo(m1_LL)$estimates,
+                            loo(m2a_LL)$estimates,
+                            loo(m2b_LL)$estimates,
+                            loo(m3_LL)$estimates,
+                            loo(m4a_LL)$estimates,
+                            loo(m4b_LL)$estimates))
+loos_table <- loos |>
+  mutate(Metric = rep(c("elpd_loo", "p_loo", "looic"), 6), 
+         Model = c(rep("m1", 3), 
+                   rep("m2a", 3), 
+                   rep("m2b", 3), 
+                   rep("m3", 3), 
+                   rep("m4a", 3), 
+                   rep("m4b", 3))) |>
+  select(Model, Metric, Estimate, SE) |>
+  arrange(Metric, Estimate)
+rownames(loos_table) <- NULL
+write.csv(loos_table, "C:/Users/GLASERD/Desktop/loo_table_1.csv")
+
+#need to get looic by pop, so make a single, long df with c(pop, model, metric, estimate, CV)
+pop.index <- as.data.frame(track_OOS) |> #could also index by region or data or whatever
+  group_by(pop) |>
+  summarise(n()) |>
+  pull()
+
+pop_loos <- NULL #long object to populate with pop specific loos
+pop_weights <- NULL #and weights
+j <- 1 #column tracker
+for(i in unique(SR_data$pop)){
+  n.cols <- pop.index[which(unique(SR_data$pop)== i)] #cols of OOS
+  cols <- j:(j+n.cols-1)
+  
+  #calc pop's loos
+  loos <- as.data.frame(rbind(loo(m1_LL[,cols])$estimates,
+                              loo(m2a_LL[,cols])$estimates,
+                              loo(m2b_LL[,cols])$estimates,
+                              loo(m3_LL[,cols])$estimates,
+                              loo(m4a_LL[,cols])$estimates,
+                              loo(m4b_LL[,cols])$estimates)) |>
+    mutate(Metric = rep(c("elpd_loo", "p_loo", "looic"), 6), 
+           Model = c(rep("m1", 3),
+                     rep("m2a", 3), 
+                     rep("m2b", 3), 
+                     rep("m3", 3), 
+                     rep("m4a", 3), 
+                     rep("m4b", 3)), 
+           Pop = rep(i, 18)) |>
+    select(Pop, Model, Metric, Estimate, SE)
+  pop_loos <- rbind(pop_loos, loos)
+  
+  pop_weight <- as.data.frame(cbind(Pop = rep(i, 6),
+                              Model = c("m1", "m2a", "m2b", "m3", "m4a", "m4b"), 
+                              Weight = loo_model_weights(list(m1 = m1_LL[,cols], 
+                                                              m2a = m2a_LL[,cols], 
+                                                              m2b = m2b_LL[,cols],
+                                                              m3 = m3_LL[,cols],
+                                                              m4a = m4a_LL[,cols], 
+                                                              m4b = m4b_LL[,cols]))))
+  pop_weights <- rbind(pop_weights, pop_weight)
+  
+  j <- j+n.cols #advance index to start of next pop 
+}
+ 
+
+                     
