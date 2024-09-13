@@ -2,8 +2,8 @@ library(tidyverse)
 library(here)
 library(rstan)
 library(loo)
-set.seed(123)
-
+#set.seed(123)
+set.seed(69)
 # wrangle and load data ------------------------------------------------------------------
 SmaxPR <- read.table(here("output/data/SmaxPRs.txt"), 
                      header = TRUE) |>
@@ -130,12 +130,12 @@ for(i in unique(SR_data$pop)){ #can subset pops for testing here via indexing (e
   m4b_LL <- cbind(m4b_LL, extract(m4b)$log_lik)
   
   #iteritevly write likeliehoods - may remove later.
-  write.csv(m1_LL, paste0(here("output/model_fits/CV/run 2/m1_LL_"),i,".csv"))
-  write.csv(m2a_LL, paste0(here("output/model_fits/CV/run 2/m2a_LL_"),i,".csv"))
-  write.csv(m2b_LL, paste0(here("output/model_fits/CV/run 2/m2b_LL_"),i,".csv"))
-  write.csv(m3_LL, paste0(here("output/model_fits/CV/run 2/m3_LL_"),i,".csv"))
-  write.csv(m4a_LL, paste0(here("output/model_fits/CV/run 2/m4a_LL_"),i,".csv"))
-  write.csv(m4b_LL, paste0(here("output/model_fits/CV/run 2/m4b_LL_"),i,".csv"))
+  write.csv(m1_LL, paste0(here("output/model_fits/CV/run 3/m1_LL_"),i,".csv"))
+  write.csv(m2a_LL, paste0(here("output/model_fits/CV/run 3/m2a_LL_"),i,".csv"))
+  write.csv(m2b_LL, paste0(here("output/model_fits/CV/run 3/m2b_LL_"),i,".csv"))
+  write.csv(m3_LL, paste0(here("output/model_fits/CV/run 3/m3_LL_"),i,".csv"))
+  write.csv(m4a_LL, paste0(here("output/model_fits/CV/run 3/m4a_LL_"),i,".csv"))
+  write.csv(m4b_LL, paste0(here("output/model_fits/CV/run 3/m4b_LL_"),i,".csv"))
   
   end <- Sys.time()
   print(end - begin)
@@ -159,7 +159,7 @@ loos_table <- loos |>
   select(Model, Metric, Estimate, SE) |>
   arrange(Metric, Estimate)
 rownames(loos_table) <- NULL
-#write.csv(loos_table, here("output/CV/loo_table_run2.csv"))
+#write.csv(loos_table, here("output/CV/loo_table_run3.csv"))
 
 #need to get looic by pop, so make a single, long df with c(pop, model, metric, estimate, CV)
 pop.index <- as.data.frame(track_OOS) |> #could also index by region or data or whatever
@@ -204,6 +204,6 @@ for(i in unique(SR_data$pop)){
   
   j <- j+n.cols #advance index to start of next pop 
 }
-#write.csv(pop_loos, here("output/CV/pop_loos_run2.csv"))
-#write.csv(pop_weights, here("output/CV/pop_weights_run2.csv"))
+#write.csv(pop_loos, here("output/CV/pop_loos_run3.csv"))
+#write.csv(pop_weights, here("output/CV/pop_weights_run3.csv"))
                      
