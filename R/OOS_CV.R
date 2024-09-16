@@ -204,6 +204,39 @@ for(i in unique(SR_data$pop)){
   
   j <- j+n.cols #advance index to start of next pop 
 }
-#write.csv(pop_loos, here("output/CV/pop_loos_run3.csv"))
-#write.csv(pop_weights, here("output/CV/pop_weights_run3.csv"))
-                     
+write.csv(pop_loos, here("output/CV/pop_loos_run3.csv"))
+write.csv(pop_weights, here("output/CV/pop_weights_run3.csv"))
+
+### aggregate the loos -------------------------------------------------------------------
+# read in LLs from fits by model
+
+m1_LLs<- do.call(rbind, 
+                lapply(here("output/model_fits/CV", list.files(here("output/model_fits/CV"), 
+                                                               pattern = "m1_LL_yeo.csv", 
+                                                               recursive = T)), 
+                       read.csv))
+m2a_LLs<- do.call(rbind, 
+                 lapply(here("output/model_fits/CV", list.files(here("output/model_fits/CV"), 
+                                                                pattern = "m2a_LL_yeo.csv", 
+                                                                recursive = T)), 
+                        read.csv))
+m2b_LLs<- do.call(rbind, 
+                 lapply(here("output/model_fits/CV", list.files(here("output/model_fits/CV"), 
+                                                                pattern = "m2b_LL_yeo.csv", 
+                                                                recursive = T)), 
+                        read.csv))
+m3_LLs<- do.call(rbind, 
+                 lapply(here("output/model_fits/CV", list.files(here("output/model_fits/CV"), 
+                                                                pattern = "m3_LL_yeo.csv", 
+                                                                recursive = T)), 
+                        read.csv))
+m4a_LLs<- do.call(rbind, 
+                 lapply(here("output/model_fits/CV", list.files(here("output/model_fits/CV"), 
+                                                                pattern = "m4a_LL_yeo.csv", 
+                                                                recursive = T)), 
+                        read.csv))
+m4b_LLs<- do.call(rbind, 
+                 lapply(here("output/model_fits/CV", list.files(here("output/model_fits/CV"), 
+                                                                pattern = "m4b_LL_yeo.csv", 
+                                                                recursive = T)), 
+                        read.csv))
