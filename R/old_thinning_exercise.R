@@ -215,3 +215,83 @@ if(FALSE){
            thin = gsub("-", ".", thin, fixed = TRUE))
   
   write.csv(Smsy_bias, here("output/data/Smsy_bias.csv"))
+
+  
+# code for old figure 1 ------------------------------------------------------------------
+  m1_draws <- rstan:::.make_plot_data(m1, pars = "log_a_pop")$samp %>%
+    rename(m1_draw = value)
+  
+  m2b_draws <- rstan:::.make_plot_data(m2b, pars = "log_a_pop")$samp %>%
+    rename(m2b_draw = value)
+  
+  region_helper <-cbind(parameter = unique(m2b_draws$parameter), 
+                        distinct(select(SR_data, pop, region)))
+  
+  log_a_draws <- left_join(m2b_draws, region_helper, by = "parameter") %>%
+    left_join(., m1_draws)
+  
+  sub_log_a <- filter(log_a_draws, pop %in% c("atnarko", "owikeno", "koeye", "long", 
+                                              "canoona", "damdochax")) %>%
+    pivot_longer(cols = c('m1_draw', 'm2b_draw'), 
+                 names_to= 'draw_type', values_to = 'draw') %>%
+    mutate(region = ifelse(draw_type == "m1_draw", NA, region), 
+           pop = str_to_title(pop))
+  
+  p1 <- ggplot(log_a_draws, aes(m1_draw, group=pop)) +
+    geom_density() +
+    theme_classic() +
+    theme(axis.text.y=element_blank(),
+          axis.ticks.y=element_blank()) +
+    labs(title="Single population", x= NULL, y=NULL) +
+    coord_cartesian(xlim=c(0,3))
+  
+  p2 <- ggplot(log_a_draws, aes(m2b_draw, group=pop, color=region)) +
+    geom_density(key_glyph = "point") +
+    theme_classic() +
+    theme(axis.text.y=element_blank(),
+          axis.ticks.y=element_blank(), 
+          legend.position = "bottom") +
+    scale_color_viridis_d(name = "Region", 
+                          labels = c("Coastal Fjord", "Interior", "Low Coastal")) +
+    labs(title = "Hierarchical", x=NULL, y=NULL) +
+    coord_cartesian(xlim=c(0,3))
+  
+  p3 <- ggplot() +
+    geom_density(data = filter(sub_log_a, draw_type == "m2b_draw"),
+                 aes(draw, group=draw_type, color=region)) +
+    geom_density(data = filter(sub_log_a, draw_type == "m1_draw"), 
+                 aes(draw, group=draw_type), color="black") + 
+    facet_grid(pop~.) +
+    theme_classic() +
+    theme(strip.text.y = element_text(size = 5), #shrink facet text
+          axis.text.y=element_blank(),
+          axis.ticks.y=element_blank()) +
+    scale_color_viridis_d() +
+    guides(color="none") + 
+    labs(x = NULL, y = NULL)
+  
+  #hack to get the legend shared, centered, horiziontal among plots. see
+  #https://stackoverflow.com/questions/10032513/ggplot2-legend-to-bottom-and-horizontal
+  design <- " 
+1133
+1133
+1133
+1133
+1133
+2233
+2233
+2233
+2233
+2233
+4444
+"  
+  p <- p1+ p2 + p3 +
+    guide_area()+ plot_layout(design=design, guides = "collect") 
+  
+  print(p)
+  
+  ggsave(here("output/pub_figs/fig1.png"), 
+         plot = p,
+         width = 5.61, 
+         height = 4.22, 
+         dpi = 300)
