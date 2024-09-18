@@ -71,7 +71,8 @@ SR_data <- read.table(here("data/FinalBroodSK.txt"),
   mutate(pop = gsub("_", "-", pop)) |> #change delimiter for use later
   na.omit() |>
   group_by(pop) |>
-  mutate(exp_spawn_scaled = scale(exp_spawn))
+  mutate(exp_spawn_scaled = scale(exp_spawn)) |>
+  as.data.frame()
 
 SR_pairs <- SR_data |>
   group_by(pop, region, water_clarity, SmaxPR, SmaxPR_SD) |>
@@ -324,7 +325,8 @@ write.csv(OOS_loo_table, here("output/pub_tables/table1.csv"), row.names = FALSE
 
 ```{r SSmsy}
 #get median Smsy from model 4 for Will 
-#avg_S <- #filter data, group by pop, summarise
+avg_S <- SR_data |>
+  filter(year>=2014) 
 
 S_Smsy <- all_draws |>
   filter(model == "m4a") |>
@@ -337,37 +339,32 @@ write.csv(M4_Smsy, here("output/data/M4a_Smsy_med.csv"), row.names = FALSE)
 ### Figure 1  
 
 ```{r fig1, fig.width=5.62, fig.height=4.215, dpi= 300}
-fig_1_data <- filter(all_draws, pop %in% c("Mathers", "Kitlope", "Morice", "Atnarko", "Canoona", "Damdochax", "Koeye", "Long", "Owikeno")) |>
+fig_1_data <- filter(all_draws, pop %in% c( "Johnston", "Kainet", "Slamgeesh", "Skidegate", "Mathers", "Morice", "Atnarko", "Canoona", "Owikeno")) |>
   left_join(pop_data, by = "pop") |>
-  mutate(data_quality = case_when(pop %in% c("Mathers") ~ "low", #10,  
-                                  pop %in% c("Atnarko", "Canoona", "Damdochax", "Koeye") ~ "medium", #20-40: 38, 31, 22, 26
-         pop %in% c("Kitlope", "Morice", "Long", "Owikeno") ~ "high"),#40+: 46, 42, 56, 56
+  mutate(data_quality = case_when(pop %in% c("Mathers", "Johnston", "Slamgeesh") ~ "low", #<15,  
+                                  pop %in% c("Atnarko", "Canoona", "Kainet") ~ "medium", #20-40
+         pop %in% c("Morice", "Owikeno", "Skidegate") ~ "high"),#40+
          data_quality = factor(data_quality, levels = c("low", "medium", "high"))) 
   
 fig_1_data |>
-  select(pop, region.x, data_quality) |>
+  select(pop, region.x, data_quality, sr_pairs) |>
   distinct() |>
   arrange(region.x, data_quality)
-
-ggplot(fig_1_data, aes(log_a, color = model)) +
-  geom_density(key_glyph = "point") +
-  facet_wrap(~pop) +
-  theme_bw() +
-  scale_color_viridis_d() +
-  theme(legend.position = "bottom")
 
 ggplot(fig_1_data, aes(model, log_a)) +
   geom_violin(fill = "grey",
               draw_quantiles = 0.5) +
   facet_grid(region.x~data_quality) +
+  geom_text(x=2, y = 3, aes(label = pop))+ #writes it a ton
   theme_bw()
 
-p <- ggplot(fig_1_data, aes(model, log_a)) +
+ggplot(fig_1_data, aes(model, log_a)) +
   geom_violin(fill = "grey",
               draw_quantiles = 0.5) +
   facet_wrap(~pop) +
+  geom_text(x=.2, y = 3, aes(label = pop))+
   theme_bw()
-p
+
 ggsave(here("output/pub_figs/fig1.png"), 
        plot = p,
        width = 5.61, 
@@ -554,7 +551,7 @@ p4 <- ggplot(fig4_data, aes(water_clarity, m4a)) +
 pw <- ((p1/p3)|(p2/p4))
 
 p <- gridExtra::grid.arrange(patchworkGrob(pw), 
-                        left = textGrob(expression("Support for including informative prior (m4a vs m2a"), 
+                        left = textGrob(expression("M4a looic stacked weight (m4a vs m2a)"), 
                                         gp = gpar(fontfamily = "serif"), rot=90))
 #^ from https://statisticsglobe.com/add-subscript-and-superscript-to-plot-in-r example 3
 
