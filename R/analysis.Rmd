@@ -472,7 +472,7 @@ print(p)
 ### Figure 4  
 Difference in LOOIC weight
 
-```{r fig3, fig.width=5.62, fig.height=4.215, dpi= 300}
+```{r fig4, fig.width=5.62, fig.height=4.215, dpi= 300}
 pop_weights_hier <- read.csv(here("output/CV/pop_weights_hier.csv"))
 
 fig4_data <- pop_weights_hier |>
@@ -554,7 +554,7 @@ p4 <- ggplot(fig4_data, aes(water_clarity, m4a)) +
 pw <- ((p1/p3)|(p2/p4))
 
 p <- gridExtra::grid.arrange(patchworkGrob(pw), 
-                        left = textGrob(expression("Support for including informative prior (m4a vs m2b"), 
+                        left = textGrob(expression("Support for including informative prior (m4a vs m2a"), 
                                         gp = gpar(fontfamily = "serif"), rot=90))
 #^ from https://statisticsglobe.com/add-subscript-and-superscript-to-plot-in-r example 3
 
