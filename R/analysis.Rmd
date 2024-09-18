@@ -3,7 +3,7 @@ title: "Combining hierarchical models and habitat data improves assessment of da
 subtitle:  |
     | Marine and Coastal Fisheries
     | Paper analysis
-author: "W.I. Atlas, D.M. Glaser, B.M. Connors, C.A. Holt, D. Greenberg, D.T. Selbie, S. Cox-Rogers, C. Carr-Harris, E. Hertz, and J.W. Moore."
+author: "W.I. Atlas, D.M. Glaser, B.M. Connors, C.A. Holt, D.A. Greenberg, D.T. Selbie, S. Cox-Rogers, C. Carr-Harris, E. Hertz, and J.W. Moore."
 knit: (function(inputFile, encoding) {
   rmarkdown::render(inputFile, encoding = encoding, output_dir = "../output/html") })
 output: 
@@ -36,7 +36,6 @@ library(gsl) #for lambert_W0()
 library(shinystan)
 library(DT) #for making a nice html table 
 source(here("R/functions.R"))
-
 set.seed(123)
 
 knitr::opts_chunk$set(warning = FALSE, 
@@ -92,7 +91,7 @@ rm(SmaxPR, SR_pairs)
 ```
   
 ### Plot data  
-Make some plots to see the data we're working with. 
+Plot data that will be fit. Looking back at this may help get an idea why certain populations are difficult to fit.  
 
 #### Raw data 
 ```{r SR-plots-raw}
@@ -126,7 +125,7 @@ for(i in 1:pages){
 }
 ```
 
-#### Linear style 
+#### Linear data 
 ```{r SR-plots-linear}
 #make helpers
 max_facets <- 16
@@ -278,340 +277,103 @@ if("m4b" %in% list.files(here("output/model_fits")) & refit == FALSE){
              iter = iter)
   saveRDS(m4b, file = here("output/model_fits/m4b"))
 }
-```
 
-## Extract draws, get $S_{MSY}$  
-After extracting draws we can look at regional productivity by model.  
-```{r draws-fig-data}
 models <- list(m1=m1, 
                m2a=m2a, 
                m2b=m2b, 
                m3=m3, 
                m4a=m4a, 
-               m4b = m4b)
+               m4b=m4b)
 #get some data for figs ready
 all_draws <- get_draws(models, pop_data)
-```
-
-And also look at $S_{MSY}$ varied between the top 2 models. This is some data we'll use for figure 1.  
-``` {r fig 1 data}
-fig1_data <- all_draws |>
-  filter(model %in% c("m2b", "m4a")) |> #THIS is what you change to compare different models 
-  group_by(model, pop) |>
-  summarise(CV = round(sd(Smsy)/mean(Smsy), 2)) |>
-  pivot_wider(names_from = model, 
-              values_from = CV) |>
-  mutate(perc_diff_CV = perc_diff(m2b, m4a), 
-         diff_CV = m2b - m4a, 
-         diff_CV_percentage = diff_CV*100) |>
-  left_join(select(pop_data, pop, region, est_origin, water_clarity, years, sr_pairs),
-            by = "pop")
-```
-
-  
-```{r thinning data compile}
-## Thinning exercise  
-  #We'll also take different amounts of data from Meziadin, which is a heavily monitored 
-  #wild population that has high #quality age and escapement data.
-if(FALSE){
-thin <- c(.2, .4, .6, .8, 1)
-
-thinning_pops <- "meziadin"  #set up robustly in case one wants multiple pops
-
-thinning_data <- vector(mode="list", length(thin)*length(thinning_pops))
-n <- NULL #empty obj to populate w/ n_data by percent for plotting later
-k <- 1
-for(i in thinning_pops){
-  for(j in thin){
-    
-    other_data <- SR_data |>
-      filter(pop != i)
-    
-    thinned_data <- SR_data |>
-      filter(pop==i) |>
-      slice_sample(prop = j)
-    
-    thin_df <-  bind_rows(other_data, thinned_data) |>
-      arrange(pop, year) 
-  
-    n_data <- thinned_data |>
-      summarise(n_data = as.character(n())) |>
-      mutate(pop = str_to_title(i), 
-             thin = gsub(".", "-", j, fixed = TRUE))
-    
-    n <- rbind(n, n_data)
-    
-    t_logRS <- thin_df$logRS #response variable
-    t_pop <- as.numeric(as.factor(thin_df$pop)) #pop index vector
-    t_N <- length(t_logRS) #n observations
-    t_J <- max(t_pop) #n populations
-    t_K <- max(as.numeric(as.factor(thin_df$region))) #n regions
-    t_region <- as.numeric(as.factor(thin_df$region)) #region index vector
-    t_reg_pop <- thin_df |> #region-pop key for indexing
-      select(pop, region) |>
-      distinct() |>
-      pull(region) |>
-      as.factor() |>
-      as.numeric()
-
-    t_X <- matrix(rep(0, (t_N*t_J)), 
-                nrow=t_N, 
-                ncol=t_J) #empty predictor matrix to populate
-
-    for(l in 1:t_N){
-      t_X[l, t_pop[l]] <- thin_df$exp_spawn[l] #populated!
-      }
-    t_int_X <- ifelse(t_X!=0, 1,0) #binary matrix to index when to "turn on" intercept 
-    t_SmaxPR <- as.numeric(unique(thin_df$SmaxPR)) #SmaxPR prior mus
-    t_SmaxPR_SD <- thin_df |> #SmaxPR SDs
-      select(pop, SmaxPR_SD) |>
-      distinct() |>
-      pull(SmaxPR_SD) |> #got creative because a SD repeats
-      as.numeric() 
-
-    thin_list <- list(logRS=t_logRS,
-                      N=t_N,
-                      pop=t_pop,
-                      J=t_J,
-                      K=t_K,
-                      region=t_region, 
-                      reg_pop=t_reg_pop,
-                      X=t_X,
-                      int_X=t_int_X,
-                      SmaxPR=t_SmaxPR,
-                      SmaxPR_SD=t_SmaxPR_SD)
-
-      thinning_data[[k]] <- thin_list
-      
-      k <- k + 1
-  }
-}
-
-rm(thin_df, thinned_data, n_data, other_data, thin_list, t_logRS, t_N, t_pop, t_J, t_K, 
-   t_region, t_reg_pop, t_X, t_int_X, t_SmaxPR, t_SmaxPR_SD)
-
-#model fitting----------------------------------------------------------------------------
-
-#swap delimiter in model names so we can write it as file w/o "." in the name
-thinned_models <- purrr::map(thinning_pops, ~{
-  paste0(.x, "_", gsub( ".", "-", thin, fixed = TRUE))}) |>
-  unlist()
-
-j <- 1 
-thinned_fits <- list()
-
-for(i in thinned_models){
-  
-        if(paste0("m1_", i) %in% list.files(here("output/model_fits/thinning")) & refit == FALSE){
-  m1_thin <- readRDS(here(paste0("output/model_fits/thinning/m1_", i)))
-} else{
-  m1_thin <- stan(file=here("Stan/model1.stan"),
-                  data=thinning_data[[j]], 
-             iter = 4000)
-  saveRDS(m1_thin, file = here(paste0("output/model_fits/thinning/m1_", i)))
-}
-  
-        if(paste0("m2a_", i) %in% list.files(here("output/model_fits/thinning")) & refit == FALSE){
-  m2a_thin <- readRDS(here(paste0("output/model_fits/thinning/m2a_", i)))
-} else{
-  m2a_thin <- stan(file=here("Stan/model2a.stan"),
-                  data=thinning_data[[j]], 
-             iter = 4000)
-  saveRDS(m2a_thin, file = here(paste0("output/model_fits/thinning/m2a_", i)))
-}
-  
-      if(paste0("m2b_", i) %in% list.files(here("output/model_fits/thinning")) & refit == FALSE){
-  m2b_thin <- readRDS(here(paste0("output/model_fits/thinning/m2b_", i)))
-} else{
-  m2b_thin <- stan(file=here("Stan/model2b.stan"),
-                  data=thinning_data[[j]], 
-             iter = 4000)
-  saveRDS(m2b_thin, file = here(paste0("output/model_fits/thinning/m2b_", i)))
-}
-  
-        if(paste0("m3_", i) %in% list.files(here("output/model_fits/thinning")) & refit == FALSE){
-  m3_thin <- readRDS(here(paste0("output/model_fits/thinning/m3_", i)))
-} else{
-  m3_thin <- stan(file=here("Stan/model3.stan"),
-                  data=thinning_data[[j]], 
-             iter = 4000)
-  saveRDS(m3_thin, file = here(paste0("output/model_fits/thinning/m3_", i)))
-}
-  
-  if(paste0("m4a_", i) %in% list.files(here("output/model_fits/thinning")) & refit == FALSE){
-  m4a_thin <- readRDS(here(paste0("output/model_fits/thinning/m4a_", i)))
-} else{
-  m4a_thin <- stan(file=here("Stan/model4a.stan"),
-                  data=thinning_data[[j]], 
-             iter = 4000)
-  saveRDS(m4a_thin, file = here(paste0("output/model_fits/thinning/m4a_", i)))
-}
-  
-    if(paste0("m4b_", i) %in% list.files(here("output/model_fits/thinning")) & refit == FALSE){
-  m4b_thin <- readRDS(here(paste0("output/model_fits/thinning/m4b_", i)))
-} else{
-  m4b_thin <- stan(file=here("Stan/model4b.stan"),
-                  data=thinning_data[[j]], 
-             iter = 4000)
-  saveRDS(m4b_thin, file = here(paste0("output/model_fits/thinning/m4b_", i)))
-}
-  
-    thinned_fits[[j]] <- m1_thin
-    thinned_fits[[j+length(thinned_models)]] <- m2a_thin #add the total # of models for each to index
-    thinned_fits[[j+length(thinned_models)*2]] <- m2b_thin
-    thinned_fits[[j+length(thinned_models)*3]] <- m3_thin
-    thinned_fits[[j+length(thinned_models)*4]] <- m4a_thin
-    thinned_fits[[j+length(thinned_models)*5]] <- m4b_thin
-
-    
-    j <- j + 1
-
-}
-
-#get draws from thinned models------------------------------------------------------------
-
-#computationally expensive: be patient
-thinned_draws <- map2(thinned_fits, 
-                      c(paste0("m1_", thinned_models),
-                        paste0("m2a_", thinned_models),
-                        paste0("m2b_", thinned_models),
-                        paste0("m3_", thinned_models), 
-                        paste0("m4a_", thinned_models), 
-                        paste0("m4b_", thinned_models)),  
-    ~cbind(rstan:::.make_plot_data(.x, 
-                                   pars = c("log_a_pop", "b_pop"))$samp, 
-           model_name = rep(.y)))  |> #instead of get_draws() because of model naming issue*
- bind_rows()|>
-  filter(chain == 1) |>
-  mutate(pop_index = as.numeric(str_extract(parameter, "[[:digit:]]+"))) |>
-  left_join(select(pop_data, pop, pop_index, region), 
-            by = "pop_index") |>
-  filter(pop %in% str_to_title(thinning_pops)) |> #still fluff here since pops won't match model_name
-  mutate(parameter = ifelse(grepl("log_a", parameter), "log_a", "b")) |>
-  tidyr::pivot_wider(names_from = parameter, 
-                     values_from = value) |>
-  separate(model_name, c("model", "pop_reduced", "thin"), sep = "_") |>
-  filter(pop_reduced == tolower(pop)) |> #only retain fits from the pop that was reduced
-  select(pop, model, thin, region, log_a, b) |>
-  mutate(Smsy = (1-lambert_W0(exp(1-log_a)))/b) |>
-  left_join(n, by = c("pop", "thin"))
-
-#*model naming issue - once a stan model is compiled it retains the same name; if you loop 
-  #a stan model it'll keep the name of the first time the model was compiled - annoying... 
-
-#then get the smsy bias data--------------------------------------------------------------
-m4_median <- thinned_draws |>
-  filter(model == "m4a", thin == 1) |>
-  group_by(pop) |>
-  summarise(Smsy_med = median(Smsy))
-
-Smsy_bias <- thinned_draws |>
-  left_join(m4_median, by = "pop") |>
-  mutate(perc_diff_Smsy = perc_diff2(log(Smsy_med), log(Smsy)), 
-         pop = factor(pop, levels = thinning_pops),
-         n_data = factor(n_data, levels = unique(thinned_draws$n_data)),
-         thin = gsub("-", ".", thin, fixed = TRUE))
-
-write.csv(Smsy_bias, here("output/data/Smsy_bias.csv"))
-}
 ```
 
 # Tables  
 
 Table 1. looic among models  
 ```{r table1}
-table1 <- get_loo_table(models)
+mod_notes <- data.frame(Model = c("m1", "m2a", "m2b", "m3", "m4a", "m4b"), 
+                        Description = c("status quo", "hierarchical prod.", "regional-hierarchical prod.", 
+                                        "informative capacity only", "hierarcical prod. & informative capacity", 
+                                        "regional-hierarcical prod. & informative capacity"),
+                        Note = c("max. R-hat = 1.09, low min. ESS", 
+                                 "low min. ESS", 
+                                 "4 div. transitions, max. R-hat = 1.14, low min. ESS",
+                                 "low min. ESS",
+                                 "",
+                                 "35 div. transitions"))
 
-#data.table(table1, #BROKEN, swap to kable extra or something
-#          rownames = FALSE,
-#          options = list(dom = 't'))
-write.csv(table1, here("output/pub_tables/table1.csv"), row.names = FALSE)
+OOS_loo_table <- read.csv(here("output/CV/loos_table.csv")) |>
+  filter(Metric =="looic") |>
+  rename(LOOIC = Estimate) |>
+  mutate(LOOIC = round(LOOIC, 1), 
+         SE = round(SE, 1)) |> 
+  left_join(mod_notes, by = "Model") |>
+    select(Model, Description, Weight, LOOIC, SE, Note) |>
+    arrange(desc(Weight))
+
+datatable(OOS_loo_table,
+          rownames = FALSE,
+          options = list(dom = 't'))
+write.csv(OOS_loo_table, here("output/pub_tables/table1.csv"), row.names = FALSE)
 ```
 
 # Figures  
 
+**add S/Smsy fig**
+
+```{r SSmsy}
+#get median Smsy from model 4 for Will 
+#avg_S <- #filter data, group by pop, summarise
+
+S_Smsy <- all_draws |>
+  filter(model == "m4a") |>
+  group_by(pop) |>
+  summarise(Smsy_med = median(Smsy))
+
+write.csv(M4_Smsy, here("output/data/M4a_Smsy_med.csv"), row.names = FALSE)
+#print figure from file. figure was made by Jon Hart at Wild Salmon Centre
+```
 ### Figure 1  
 
 ```{r fig1, fig.width=5.62, fig.height=4.215, dpi= 300}
-m1_draws <- rstan:::.make_plot_data(m1, pars = "log_a_pop")$samp %>%
-  rename(m1_draw = value)
+fig_1_data <- filter(all_draws, pop %in% c("Mathers", "Kitlope", "Morice", "Atnarko", "Canoona", "Damdochax", "Koeye", "Long", "Owikeno")) |>
+  left_join(pop_data, by = "pop") |>
+  mutate(data_quality = case_when(pop %in% c("Mathers") ~ "low", #10,  
+                                  pop %in% c("Atnarko", "Canoona", "Damdochax", "Koeye") ~ "medium", #20-40: 38, 31, 22, 26
+         pop %in% c("Kitlope", "Morice", "Long", "Owikeno") ~ "high"),#40+: 46, 42, 56, 56
+         data_quality = factor(data_quality, levels = c("low", "medium", "high"))) 
+  
+fig_1_data |>
+  select(pop, region.x, data_quality) |>
+  distinct() |>
+  arrange(region.x, data_quality)
 
-m2b_draws <- rstan:::.make_plot_data(m2b, pars = "log_a_pop")$samp %>%
-  rename(m2b_draw = value)
-
-region_helper <-cbind(parameter = unique(m2b_draws$parameter), 
-                       distinct(select(SR_data, pop, region)))
-
-log_a_draws <- left_join(m2b_draws, region_helper, by = "parameter") %>%
-  left_join(., m1_draws)
-
-sub_log_a <- filter(log_a_draws, pop %in% c("atnarko", "owikeno", "koeye", "long", 
-                                            "canoona", "damdochax")) %>%
-  pivot_longer(cols = c('m1_draw', 'm2b_draw'), 
-               names_to= 'draw_type', values_to = 'draw') %>%
-  mutate(region = ifelse(draw_type == "m1_draw", NA, region), 
-         pop = str_to_title(pop))
-
-p1 <- ggplot(log_a_draws, aes(m1_draw, group=pop)) +
-  geom_density() +
-  theme_classic() +
-  theme(axis.text.y=element_blank(),
-        axis.ticks.y=element_blank()) +
-  labs(title="Single population", x= NULL, y=NULL) +
-  coord_cartesian(xlim=c(0,3))
-
-p2 <- ggplot(log_a_draws, aes(m2b_draw, group=pop, color=region)) +
+ggplot(fig_1_data, aes(log_a, color = model)) +
   geom_density(key_glyph = "point") +
-  theme_classic() +
-  theme(axis.text.y=element_blank(),
-        axis.ticks.y=element_blank(), 
-        legend.position = "bottom") +
-  scale_color_viridis_d(name = "Region", 
-                       labels = c("Coastal Fjord", "Interior", "Low Coastal")) +
-  labs(title = "Hierarchical", x=NULL, y=NULL) +
-  coord_cartesian(xlim=c(0,3))
-
-p3 <- ggplot() +
-  geom_density(data = filter(sub_log_a, draw_type == "m2b_draw"),
-               aes(draw, group=draw_type, color=region)) +
-  geom_density(data = filter(sub_log_a, draw_type == "m1_draw"), 
-               aes(draw, group=draw_type), color="black") + 
-  facet_grid(pop~.) +
-  theme_classic() +
-  theme(strip.text.y = element_text(size = 5), #shrink facet text
-        axis.text.y=element_blank(),
-        axis.ticks.y=element_blank()) +
+  facet_wrap(~pop) +
+  theme_bw() +
   scale_color_viridis_d() +
-  guides(color="none") + 
-  labs(x = NULL, y = NULL)
+  theme(legend.position = "bottom")
 
-#hack to get the legend shared, centered, horiziontal among plots. see
-  #https://stackoverflow.com/questions/10032513/ggplot2-legend-to-bottom-and-horizontal
-design <- " 
-1133
-1133
-1133
-1133
-1133
-2233
-2233
-2233
-2233
-2233
-4444
-"  
-p <- p1+ p2 + p3 +
-  guide_area()+ plot_layout(design=design, guides = "collect") 
+ggplot(fig_1_data, aes(model, log_a)) +
+  geom_violin(fill = "grey",
+              draw_quantiles = 0.5) +
+  facet_grid(region.x~data_quality) +
+  theme_bw()
 
-print(p)
-
+p <- ggplot(fig_1_data, aes(model, log_a)) +
+  geom_violin(fill = "grey",
+              draw_quantiles = 0.5) +
+  facet_wrap(~pop) +
+  theme_bw()
+p
 ggsave(here("output/pub_figs/fig1.png"), 
        plot = p,
        width = 5.61, 
        height = 4.22, 
        dpi = 300)
 ```
-
 ### Figure 2   
 
 ```{r fig2 wrangle}
@@ -623,7 +385,7 @@ fig2_preds <- NULL
 fig2_data <- NULL
 
 for(i in unique(lakes)){
-  for(j in c("m1", "m4")){
+  for(j in c("m2a", "m4a")){
     sub_draw <- filter(all_draws, pop==i, model==j)
     sub_dat <- filter(SR_data, pop==tolower(i))
     
@@ -660,12 +422,12 @@ fig2_data <- fig2_data |>
 p <- ggplot() +
   geom_ribbon(data = fig2_preds, aes(x = Spawn/1000, ymin = Rec_lwr/1000, ymax = Rec_upr/1000, 
                                       fill = model, color = model), alpha=0.5) +
-  geom_line(data = fig2_preds, aes(x = Spawn/1000, y = Rec_med/1000, color=model), size = 1) +
+  geom_line(data = fig2_preds, aes(x = Spawn/1000, y = Rec_med/1000, color=model), linewidth = 1) +
   geom_point(data = fig2_data, aes(x=exp_spawn/1000, y=total_rec/1000)) +
   facet_wrap(~pop, scales="free", nrow=2) +
   theme_classic() +
   scale_fill_viridis_d(name = "Model", 
-                       labels = c("1", "4")) +
+                       labels = c("2a", "4a")) +
   scale_color_viridis_d() +
   theme(text = element_text(family="serif"),
         legend.position= "bottom", 
@@ -675,7 +437,30 @@ p <- ggplot() +
         labs(y = "Recruits (thousands)", x = "Spawners (thousands)") +
   guides(color="none")
 
+p
+
 ggsave(here("output/pub_figs/fig2.png"), 
+       plot = p,
+       width = 5.61, 
+       height = 4.22, 
+       dpi = 300)
+```
+
+### Figure 3  
+
+```{r fig3, fig.width=5.62, fig.height=4.215, dpi= 300}
+p <- ggplot(filter(all_draws, model == "m4a"), aes(region, log_a)) +
+  geom_violin(fill = "grey",
+              draw_quantiles = 0.5) +
+  labs(title = "Regional Productuvity in Model 1", 
+        y = "log(alpha)", 
+       x = "Region") +
+  theme_bw() +
+  scale_x_discrete(labels = c("coastal fjord", "interior", "low coastal")) +
+  theme(legend.position = "bottom", 
+        text = element_text(family="serif")) 
+p
+ggsave(here("output/pub_figs/fig3.png"), 
        plot = p,
        width = 5.61, 
        height = 4.22, 
@@ -684,16 +469,25 @@ ggsave(here("output/pub_figs/fig2.png"),
 print(p)
 ```
 
-### Figure 3  
-Difference in CV since CVs are standardized
+### Figure 4  
+Difference in LOOIC weight
 
 ```{r fig3, fig.width=5.62, fig.height=4.215, dpi= 300}
-p1 <- ggplot(fig1_data,aes(sr_pairs, diff_CV)) +
+pop_weights_hier <- read.csv(here("output/CV/pop_weights_hier.csv"))
+
+fig4_data <- pop_weights_hier |>
+  pivot_wider(names_from = Model, values_from = Weight) |>
+  mutate(pop = str_to_title(gsub("-", " ", Pop))) |>
+  left_join(pop_data, by = "pop") |>
+  select(-Pop) |>
+  relocate(pop, 1)
+
+p1 <- ggplot(fig4_data,aes(sr_pairs, m4a)) +
   theme_classic() +
   geom_point(aes(color = region)) +
   geom_hline(yintercept = 0, 
              lty = 2) +
-  annotate("text", x = 5, y = 50, label = "(A)") +
+  annotate("text", x = 5, y = 1.1, label = "(A)") +
   theme(legend.position = "bottom", 
         legend.title = element_text(size = 9),
         legend.text = element_text(size = 7),
@@ -708,13 +502,14 @@ p1 <- ggplot(fig1_data,aes(sr_pairs, diff_CV)) +
   labs(x = "Years of SR pairs", 
        y = NULL)
 
-p2 <- ggplot(filter(fig1_data, est_origin != "both"), aes(est_origin, diff_CV)) +
-  geom_violin(aes(fill=est_origin), 
+p2 <- ggplot(filter(fig4_data, est_origin != "both"), aes(est_origin, m4a)) +
+  geom_violin(#aes(fill=est_origin), 
               alpha = 0.5, 
               draw_quantiles = 0.5) +
     geom_hline(yintercept = 0, 
              lty = 2) +
-  annotate("text", x= .52, y = 50, label = "(B)") +
+  geom_jitter(width = 0.25) +
+  #annotate("text", x= .52, y = 1.1, label = "(B)") +
   theme_classic() +
   theme(text = element_text(family="serif"),
         legend.position= "bottom", 
@@ -726,13 +521,14 @@ p2 <- ggplot(filter(fig1_data, est_origin != "both"), aes(est_origin, diff_CV)) 
   scale_x_discrete(labels = c("empirical", "modeled")) +
   labs(x= "PR estimate method", y=NULL) 
 
-p3 <- ggplot(fig1_data, aes(region, diff_CV)) +
-      geom_violin(aes(fill=est_origin), 
+p3 <- ggplot(fig4_data, aes(region, m4a)) +
+      geom_violin(#aes(fill=est_origin), 
                   alpha = 0.5, 
                   draw_quantiles = 0.5) +
+  geom_jitter(width = 0.25) +
     geom_hline(yintercept = 0, 
              lty = 2) +
-  annotate("text", x= .6, y = 50, label = "(C)") +
+  #annotate("text", x= .6, y = 1.1, label = "(C)") +
   theme_classic() +
   theme(text = element_text(family="serif")) +
   scale_fill_viridis_d() +
@@ -740,13 +536,15 @@ p3 <- ggplot(fig1_data, aes(region, diff_CV)) +
   labs(x= "Region", y=NULL) +
   guides(fill="none")
 
-p4 <- ggplot(fig1_data, aes(water_clarity, diff_CV)) +
-  geom_violin(aes(fill=est_origin), 
+p4 <- ggplot(fig4_data, aes(water_clarity, m4a)) +
+  geom_violin(#aes(fill=est_origin), 
               alpha = 0.5, 
               draw_quantiles = 0.5) +
+  geom_jitter(width = 0.25) +
+
   geom_hline(yintercept = 0, 
              lty = 2) +
-  annotate("text", x= .6, y = 50, label = "(D)") +
+  #annotate("text", x= .6, y = 1.1, label = "(D)") +
   theme_classic() +
   theme(text = element_text(family="serif")) + 
   scale_fill_viridis_d() +
@@ -756,67 +554,17 @@ p4 <- ggplot(fig1_data, aes(water_clarity, diff_CV)) +
 pw <- ((p1/p3)|(p2/p4))
 
 p <- gridExtra::grid.arrange(patchworkGrob(pw), 
-                        left = textGrob(expression("Reduction in S"["MSY"]*" uncertainty (CV)"), 
+                        left = textGrob(expression("Support for including informative prior (m4a vs m2b"), 
                                         gp = gpar(fontfamily = "serif"), rot=90))
-print(p)
 #^ from https://statisticsglobe.com/add-subscript-and-superscript-to-plot-in-r example 3
-ggsave(here("output/pub_figs/fig3.png"), 
-       plot = p,
-       width = 5.61, 
-       height = 4.22, 
-       dpi = 300)
-```
 
-### Figure 4  
-$S_{MSY}$ posterior densities across varying amounts of data in data rich populations.  
-
-Percent differences (i.e. bias) relative to the full data m4 median.  
-```{r fig 4, fig.width=5.62, fig.height=4.215, dpi= 300}
-if(FALSE){
-p <- ggplot(Smsy_bias, aes(n_data, perc_diff_Smsy))+
-   geom_violin(fill = "grey",
-              draw_quantiles = 0.5) +
-   geom_hline(yintercept = 0, 
-             lty = 2) +
-  facet_wrap(~model, scales = "free_y") +
-  labs(title = paste("Smsy bias across different amounts of data at",
-                     str_to_title(thinning_pops)), 
-        y = "Percent difference", 
-       x = "Numer of SR pairs") +
-  theme_bw() +
-  theme(legend.position = "bottom", 
-        text = element_text(family="serif")) +
-  guides(fill="none")
-
+print(p)
 ggsave(here("output/pub_figs/fig4.png"), 
        plot = p,
        width = 5.61, 
        height = 4.22, 
        dpi = 300)
-
-print(p)
-}
 ```
 
-### Figure ?  
 
-```{r fig, fig.width=5.62, fig.height=4.215, dpi= 300}
-p <- ggplot(filter(all_draws, model == "m1"), aes(region, log_a)) +
-  geom_violin(fill = "grey",
-              draw_quantiles = 0.5) +
-  labs(title = "Regional Productuvity in Model 1", 
-        y = "log(alpha)", 
-       x = "Region") +
-  theme_bw() +
-  scale_x_discrete(labels = c("coastal fjord", "interior", "low coastal")) +
-  theme(legend.position = "bottom", 
-        text = element_text(family="serif")) 
 
-ggsave(here("output/pub_figs/fig_unk.png"), 
-       plot = p,
-       width = 5.61, 
-       height = 4.22, 
-       dpi = 300)
-
-print(p)
-```
