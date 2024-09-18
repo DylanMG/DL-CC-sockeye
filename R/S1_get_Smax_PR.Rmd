@@ -181,17 +181,20 @@ SmaxPRs <- left_join(sockeye_pops, water_SDs, by = "water_clarity") |>
 write.table(SmaxPRs, here("output/data/SmaxPRs.txt"), row.names = FALSE)
 ```
 
-Then we'll have a look at the   
+   
 ```{r table-s1}
 original_S1 <- read.csv(here("data/lno_s1.csv"), header = TRUE) |>
   mutate(lake = tolower(gsub(" Lake| Lakes", "", Lake))) |>
   mutate(population = tolower(gsub(" ", "_", lake))) |>
   select(population, Years, Sampling, Study)
 
+pop_data <- read.csv(here("output/data/pop_data.csv"))
+
 S1 <- SmaxPRs |>
   mutate(PR_mean = ifelse(is.na(PR_mean), original_PR_mean, PR_mean), #for empirical pops where this wasnt published in S1
          SmaxPR_CV = round(SmaxPR_SD/SmaxPR,2)) |> 
-  select(population, PR_mean, PR_total, SmaxPR, SmaxPR_SD, SmaxPR_CV, est_origin, region, water_clarity, lake_area_Hec, ) |>
+  cbind(SR_pairs = pop_data$sr_pairs) |>
+  select(population, region, water_clarity, SR_pairs, PR_mean, PR_total, SmaxPR, SmaxPR_SD, SmaxPR_CV, est_origin,  lake_area_Hec) |>
   left_join(original_S1, by = "population") |>
   mutate(population = str_to_title(gsub("_", " ", population)))
 
