@@ -295,7 +295,7 @@ loos_table <- loos_all |>
   arrange(Metric, Estimate)
 rownames(loos_table) <- NULL
 
-#write.csv(loos_table, here("output/CV/loos_table.csv"))
+write.csv(loos_table, here("output/CV/loos_table.csv"))
 
 # by population which performed best overall? (add error among models?)
 pop_loos <- NULL #long object to populate with pop specific loos
