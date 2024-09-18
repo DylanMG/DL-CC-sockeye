@@ -362,7 +362,7 @@ ggplot(fig_1_data, aes(model, log_a)) +
   geom_violin(fill = "grey",
               draw_quantiles = 0.5) +
   facet_wrap(~pop) +
-  geom_text(x=.2, y = 3, aes(label = pop))+
+  geom_text(x=.2, y = 3, aes(label = pop))+ #MAKE BETTER!
   theme_bw()
 
 ggsave(here("output/pub_figs/fig1.png"), 
