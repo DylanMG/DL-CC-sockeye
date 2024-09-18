@@ -3,7 +3,7 @@ title: "Combining hierarchical models and habitat data improves assessment of da
 subtitle:  |
     | Marine and Coastal Fisheries
     | Supplement 2: Model diagnostics and reporting full posteriors 
-author: "W.I. Atlas, D.M. Glaser, B.M. Connors, C.A. Holt, D.T. Selbie, S. Cox-Rogers, C. Carr-Harris, E. Hertz, and J.W. Moore."
+author: "W.I. Atlas, D.M. Glaser, B.M. Connors, C.A. Holt, D.A. Greenberg, D.T. Selbie, S. Cox-Rogers, C. Carr-Harris, E. Hertz, and J.W. Moore."
 knit: (function(inputFile, encoding) {
   rmarkdown::render(inputFile, encoding = encoding, output_dir = "../output/html") })
 output: 
@@ -280,54 +280,15 @@ reg_prod <- all_draws |>
 #          caption = NA,
 #          filter = 'top', 
 #          options = list(pageLength = 15, autoWidth = TRUE))
-
-#get median Smsy from model 4 for Will 
-M4_Smsy <- all_draws |>
-  filter(model == "m4a") |>
-  group_by(pop) |>
-  summarise(Smsy_med = median(Smsy))
-
-write.csv(M4_Smsy, here("output/data/M4a_Smsy_med.csv"), row.names = FALSE)
 ```
 
 ## Posterior distributions  
 
-### $S_{MSY}$ posteriors  
-```{r Smsy plot}
+### log($\alpha$) posteriors
+```{r a plots}
 max_facets <- 16
 pages <- ceiling(length(unique(SR_data$pop))/max_facets)
 
-j <- 1 #facet index helper
-
-#make and print plots
-for(i in 1:pages){
-  sub_dat <- filter(all_draws, 
-                    pop %in% gsub("-", " ", 
-                                  str_to_title(unique(SR_data$pop)))[j:(j+(max_facets-1))])
-  
-  p <- ggplot(sub_dat, 
-              aes(model, log(Smsy))) +
-    geom_violin(fill = "grey", 
-                draw_quantiles = 0.5) +
-    ggh4x::facet_wrap2(vars(pop), 
-                       nrow=(max_facets/4), 
-                       ncol=(max_facets/4), 
-                       trim_blank=FALSE,
-                       scales = "free_y") +
-    labs(title = paste0("Smsy estimate (", i, " of ", pages, ")"), 
-         y = "log(Spawners)", 
-         x = "model") +
-    theme_bw() +
-  guides(fill="none")
-  
-  print(p)
-  
-  j <- j + max_facets
-}
-```
-
-### log($\alpha$) posteriors
-```{r a plots}
 j <- 1 #facet index helper
 
 #make and print plots
@@ -389,10 +350,41 @@ for(i in 1:pages){
 }
 ```
 
-### Models 1 and 4 fit to data
+### $S_{MSY}$ posteriors  
+```{r Smsy plot}
+j <- 1 #facet index helper
+
+#make and print plots
+for(i in 1:pages){
+  sub_dat <- filter(all_draws, 
+                    pop %in% gsub("-", " ", 
+                                  str_to_title(unique(SR_data$pop)))[j:(j+(max_facets-1))])
+  
+  p <- ggplot(sub_dat, 
+              aes(model, log(Smsy))) +
+    geom_violin(fill = "grey", 
+                draw_quantiles = 0.5) +
+    ggh4x::facet_wrap2(vars(pop), 
+                       nrow=(max_facets/4), 
+                       ncol=(max_facets/4), 
+                       trim_blank=FALSE,
+                       scales = "free_y") +
+    labs(title = paste0("Smsy estimate (", i, " of ", pages, ")"), 
+         y = "log(Spawners)", 
+         x = "model") +
+    theme_bw() +
+  guides(fill="none")
+  
+  print(p)
+  
+  j <- j + max_facets
+}
+```
+
+### Models 1 and 4a fit to data
 
 ```{r m1 & m4 to data}
-if(FALSE){
+if(TRUE){
 fig_preds <- NULL
 fig_data <- NULL
 
@@ -456,7 +448,7 @@ for(i in 1:pages){
           legend.title = element_text(size=9),
           legend.text = element_text(size=7),
           legend.key.size = unit(.5, "cm")) +
-        labs(title = paste0("S-R models m1 & m4 (", i, " of ", pages, ")"), 
+        labs(title = paste0("S-R models m1 & m4a (", i, " of ", pages, ")"), 
          y = "Recruits (thousands)", 
          x = "Spawners (thousands)")
 
