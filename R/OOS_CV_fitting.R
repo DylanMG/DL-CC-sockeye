@@ -2,8 +2,9 @@ library(tidyverse)
 library(here)
 library(rstan)
 library(loo)
-#set.seed(123) #setting seed affects which pops are randomly selected, used 1, 123, n_pops(69) in analysis
-set.seed(2)
+#set.seed(123) #setting seed affects which pops are randomly selected, used 1, 123, n_pops(69) in analysis already
+#set.seed(2)
+set.seed(3)
 
 # wrangle and load data ------------------------------------------------------------------
 SmaxPR <- read.table(here("output/data/SmaxPRs.txt"), 
@@ -31,7 +32,7 @@ SR_data <- read.table(here("data/FinalBroodSK.txt"),
   mutate(exp_spawn_scaled = scale(exp_spawn))
 
 #loop pops, fit models for a single run --------------------------------------------------
-new_run <- FALSE #toggle to do run. make sure you set.seed() different if so
+new_run <- TRUE #toggle to do run. make sure you set.seed() different if so
 
 if(new_run == FALSE){pop.index <- read.csv(here("output/CV/pop_index.csv")) |>
   pull(x)} #need this for later if not doing new run
@@ -58,7 +59,7 @@ if(new_run == TRUE){
     
     OOS_pop <- anti_join(sub_pop, thinned_pop) #the data that was removed; to predict OOS
     track_OOS <- rbind(track_OOS, OOS_pop) #keep track of OOS obs by run
-
+    
     #write new stan data ---
     logRS <- sub_data$logRS #response variable
     pop <- as.numeric(as.factor(sub_data$pop)) #pop index vector
@@ -134,16 +135,16 @@ if(new_run == TRUE){
     m4b_LL <- cbind(m4b_LL, extract(m4b)$log_lik)
     
     #write likelihoods by pop*model
-    write.csv(m1_LL, paste0(here("output/model_fits/CV/run 3/m1_LL_"),i,".csv"))
-    write.csv(m2a_LL, paste0(here("output/model_fits/CV/run 3/m2a_LL_"),i,".csv"))
-    write.csv(m2b_LL, paste0(here("output/model_fits/CV/run 3/m2b_LL_"),i,".csv"))
-    write.csv(m3_LL, paste0(here("output/model_fits/CV/run 3/m3_LL_"),i,".csv"))
-    write.csv(m4a_LL, paste0(here("output/model_fits/CV/run 3/m4a_LL_"),i,".csv"))
-    write.csv(m4b_LL, paste0(here("output/model_fits/CV/run 3/m4b_LL_"),i,".csv"))
+    write.csv(m1_LL, paste0(here("output/model_fits/CV/run 5/m1_LL_"),i,".csv"))
+    write.csv(m2a_LL, paste0(here("output/model_fits/CV/run 5/m2a_LL_"),i,".csv"))
+    write.csv(m2b_LL, paste0(here("output/model_fits/CV/run 5/m2b_LL_"),i,".csv"))
+    write.csv(m3_LL, paste0(here("output/model_fits/CV/run 5/m3_LL_"),i,".csv"))
+    write.csv(m4a_LL, paste0(here("output/model_fits/CV/run 5/m4a_LL_"),i,".csv"))
+    write.csv(m4b_LL, paste0(here("output/model_fits/CV/run 5/m4b_LL_"),i,".csv"))
     
     end <- Sys.time()
     print(end - begin)
-  
+  }
   #compute the loos
   loos <- as.data.frame(rbind(loo(m1_LL)$estimates,
                               loo(m2a_LL)$estimates,
@@ -162,13 +163,13 @@ if(new_run == TRUE){
     select(Model, Metric, Estimate, SE) |>
     arrange(Metric, Estimate)
   rownames(loos_table) <- NULL
-
+  
   #need to get looic by pop, so make a single, long df with c(pop, model, metric, estimate, CV)
   pop.index <- as.data.frame(track_OOS) |> #how many OOS data for each pop? - stays same each run
     group_by(pop) |>
     summarise(n()) |>
     pull()
-
+  
   pop_loos <- NULL #long object to populate with pop specific loos
   pop_weights <- NULL #and weights
   j <- 1 #column tracker
@@ -203,147 +204,14 @@ if(new_run == TRUE){
                                                                       m4a = m4a_LL[,cols], 
                                                                       m4b = m4b_LL[,cols]))))
     pop_weights <- rbind(pop_weights, pop_weight)
-  }
     j <- j+n.cols #advance index to start of next pop 
   }
 }
+
 #write run specific output summaries to folders. rename these depending on which is run
-  #yes, looping could work better, but it takes a week-ish to do 3 runs... 
-  # if worried that runs are the same compare them with all_equal() or something.
+#yes, looping could work better, but it takes a week-ish to do 3 runs... 
+# if worried that runs are the same compare them with all_equal() or something.
 #write.csv(pop.index, here("output/CV/pop_index.csv"), row.names = FALSE) #stays same as long as new data not passed
-#write.csv(loos_table, here("output/CV/loo_table_run3.csv"))
-#write.csv(pop_loos, here("output/CV/pop_loos_run3.csv"))
-#write.csv(pop_weights, here("output/CV/pop_weights_run3.csv"))
-
-### aggregate the loos -------------------------------------------------------------------
-# code prior to this has worked with a single run and written LLs to here("ouput/model_fits/CV") 
-  # by run, now we want to summarise multiple runs of OOS CV fits to capture the variability 
-  # in which data was left out of sample 
-# read in stored LLs from fits by model, where yeo is the last pop with all LLs bound to it
-m1_LLs<- do.call(rbind, 
-                lapply(here("output/model_fits/CV", list.files(here("output/model_fits/CV"), 
-                                                               pattern = "m1_LL_yeo.csv", 
-                                                               recursive = T)), read.csv)) |>
-  select(-X) |>
-  as.matrix()
-
-m2a_LLs<- do.call(rbind, 
-                 lapply(here("output/model_fits/CV", list.files(here("output/model_fits/CV"), 
-                                                                pattern = "m2a_LL_yeo.csv", 
-                                                                recursive = T)), read.csv))|>
-  select(-X) |>
-  as.matrix()
-
-m2b_LLs<- do.call(rbind, 
-                 lapply(here("output/model_fits/CV", list.files(here("output/model_fits/CV"), 
-                                                                pattern = "m2b_LL_yeo.csv", 
-                                                                recursive = T)), read.csv))|>
-  select(-X) |>
-  as.matrix()
-
-m3_LLs<- do.call(rbind, 
-                 lapply(here("output/model_fits/CV", list.files(here("output/model_fits/CV"), 
-                                                                pattern = "m3_LL_yeo.csv", 
-                                                                recursive = T)), read.csv))|>
-  select(-X) |>
-  as.matrix()
-
-m4a_LLs<- do.call(rbind, 
-                 lapply(here("output/model_fits/CV", list.files(here("output/model_fits/CV"), 
-                                                                pattern = "m4a_LL_yeo.csv", 
-                                                                recursive = T)), read.csv))|>
-  select(-X) |>
-  as.matrix()
-
-m4b_LLs<- do.call(rbind, 
-                 lapply(here("output/model_fits/CV", list.files(here("output/model_fits/CV"), 
-                                                                pattern = "m4b_LL_yeo.csv", 
-                                                                recursive = T)), read.csv))|>
-  select(-X) |>
-  as.matrix()
-
-# what was the best model overall?
-#compute the loos
-loos_all <- as.data.frame(rbind(loo(m1_LLs)$estimates,
-                            loo(m2a_LLs)$estimates,
-                            loo(m2b_LLs)$estimates,
-                            loo(m3_LLs)$estimates,
-                            loo(m4a_LLs)$estimates,
-                            loo(m4b_LLs)$estimates))
-#get looic weights
-weights <- as.data.frame(cbind(Model= c("m1", "m2a", "m2b", "m3", "m4a", "m4b"),
-                      Metric = rep("looic", 6),
-                      Weight = loo_model_weights(list(m1 = m1_LLs, 
-                                                       m2a = m2a_LLs,
-                                                       m2b = m2b_LLs,
-                                                       m3 = m3_LLs,
-                                                       m4a = m4a_LLs, 
-                                                       m4b = m4b_LLs))))
-                       
-
-loos_table <- loos_all |>
-  mutate(Metric = rep(c("elpd_loo", "p_loo", "looic"), 6), 
-         Model = c(rep("m1", 3), 
-                   rep("m2a", 3), 
-                   rep("m2b", 3), 
-                   rep("m3", 3), 
-                   rep("m4a", 3), 
-                   rep("m4b", 3))) |>
-  left_join(weights, by = c("Model", "Metric")) |>
-  select(Model, Metric, Estimate, SE, Weight) |>
-  mutate(Weight = round(as.numeric(Weight), 4)) |>
-  arrange(Metric, Estimate)
-rownames(loos_table) <- NULL
-
-write.csv(loos_table, here("output/CV/loos_table.csv"))
-
-# by population which performed best overall? (add error among models?)
-pop_loos <- NULL #long object to populate with pop specific loos
-pop_weights <- NULL #and weights
-pop_weights_hier <- NULL #weights between m2a and m4a to see w. and w/o prior
-j <- 1 #column tracker
-for(i in unique(SR_data$pop)){
-  n.cols <- pop.index[which(unique(SR_data$pop)== i)] #cols of OOS; same among runs
-  cols <- j:(j+n.cols-1)
-  
-  #calc pop's loos
-  pop_loo <- as.data.frame(rbind(loo(m1_LLs[,cols])$estimates,
-                              loo(m2a_LLs[,cols])$estimates,
-                              loo(m2b_LLs[,cols])$estimates,
-                              loo(m3_LLs[,cols])$estimates,
-                              loo(m4a_LLs[,cols])$estimates,
-                              loo(m4b_LLs[,cols])$estimates)) |>
-    mutate(Metric = rep(c("elpd_loo", "p_loo", "looic"), 6), 
-           Model = c(rep("m1", 3),
-                     rep("m2a", 3), 
-                     rep("m2b", 3), 
-                     rep("m3", 3), 
-                     rep("m4a", 3), 
-                     rep("m4b", 3)), 
-           Pop = rep(i, 18)) |>
-    select(Pop, Model, Metric, Estimate, SE)
-  pop_loos <- rbind(pop_loos, pop_loo)
-  
-  pop_weight <- as.data.frame(cbind(Pop = rep(i, 6),
-                                    Model = c("m1", "m2a", "m2b", "m3", "m4a", "m4b"), 
-                                    Weight = loo_model_weights(list(m1 = m1_LLs[,cols], 
-                                                                    m2a = m2a_LLs[,cols], 
-                                                                    m2b = m2b_LLs[,cols],
-                                                                    m3 = m3_LLs[,cols],
-                                                                    m4a = m4a_LLs[,cols], 
-                                                                    m4b = m4b_LLs[,cols]))))
-  pop_weights <- rbind(pop_weights, pop_weight)
-  
-  #and weights between m2a and m4a
-  pop_weight_hier <- as.data.frame(cbind(Pop = rep(i, 2),
-                                    Model = c("m2a", "m4a"), 
-                                    Weight = loo_model_weights(list(m2a = m2a_LLs[,cols], 
-                                                                    m4a = m4a_LLs[,cols]))))
-  pop_weights_hier <- rbind(pop_weights_hier, pop_weight_hier)
-  
-  j <- j+n.cols #advance index to start of next pop 
-}
-
-write.csv(pop_loos, here("output/CV/pop_loos.csv"), row.names = FALSE)
-write.csv(pop_weights, here("output/CV/pop_weights.csv"), row.names = FALSE)
-write.csv(pop_weights_hier, here("output/CV/pop_weights_hier.csv"), row.names = FALSE)
+#write.csv(loos_table, here("output/CV/loo_table_run5.csv"))
+#write.csv(pop_loos, here("output/CV/pop_loos_run5.csv"))
+#write.csv(pop_weights, here("output/CV/pop_weights_run5.csv"))
