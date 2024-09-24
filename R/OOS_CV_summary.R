@@ -121,6 +121,7 @@ write.csv(loos_table, here("output/CV/loos_table.csv"))
 pop_loos <- NULL #long object to populate with pop specific loos
 pop_weights <- NULL #and weights
 pop_weights_hier <- NULL #weights between m2a and m4a to see w. and w/o prior
+pop_weights_quo <- NULL #weights between top model and status quo (m1)
 j <- 1 #column tracker
 for(i in unique(SR_data$pop)){
   n.cols <- pop.index[which(unique(SR_data$pop)== i)] #cols of OOS; same among runs
@@ -161,9 +162,17 @@ for(i in unique(SR_data$pop)){
                                                                     m4a = m4a_LLs[,cols]))))
   pop_weights_hier <- rbind(pop_weights_hier, pop_weight_hier)
   
+  #and weights between m2a and m4a
+  pop_weight_quo <- as.data.frame(cbind(Pop = rep(i, 2),
+                                         Model = c("m1", "m2b"), 
+                                         Weight = loo_model_weights(list(m1 = m1_LLs[,cols], 
+                                                                         m2b = m2b_LLs[,cols]))))
+  pop_weights_quo <- rbind(pop_weights_quo, pop_weight_quo)
+  
   j <- j+n.cols #advance index to start of next pop 
 }
 
 write.csv(pop_loos, here("output/CV/pop_loos.csv"), row.names = FALSE)
 write.csv(pop_weights, here("output/CV/pop_weights.csv"), row.names = FALSE)
 write.csv(pop_weights_hier, here("output/CV/pop_weights_hier.csv"), row.names = FALSE)
+write.csv(pop_weights_quo, here("output/CV/pop_weights_quo.csv"), row.names = FALSE)
