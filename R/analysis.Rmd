@@ -326,10 +326,11 @@ write.csv(OOS_loo_table, here("output/pub_tables/table1.csv"), row.names = FALSE
 
 ```{r SSmsy}
 #get median Smsy from model 4 for Will 
-m4a_Smsy <- all_draws |>
-  filter(model == "m4a") |>
+m2b_Smsy <- all_draws |>
+  filter(model == "m2b") |>
   group_by(pop) |>
   summarise(Smsy_med = median(Smsy))
+#write.csv(m2b_Smsy, "C:/Users/GLASERD/Desktop/m2b_Smsy_med.csv", row.names = FALSE)
 
 S_Smsy <- read.csv(here("data/M4_Smsy_med+recent escapements_DG.csv")) |>
   mutate(s_smsy = as.numeric(s_smsy))
@@ -464,7 +465,7 @@ p <- ggplot(filter(all_draws, model == "m2b"), aes(region, log_a)) +
   geom_violin(fill = "grey",
               draw_quantiles = 0.5) +
   labs(title = "Regional Productuvity in Model 2b", 
-        y = "log(alpha)", 
+        y = expression("log("*alpha*")"), 
        x = "Region") +
   theme_bw() +
   scale_x_discrete(labels = c("coastal fjord", "interior", "low coastal")) +
@@ -484,21 +485,19 @@ print(p)
 Difference in LOOIC weight
 
 ```{r fig4, fig.width=5.62, fig.height=4.215, dpi= 300}
-pop_weights_hier <- read.csv(here("output/CV/pop_weights_hier.csv"))
+pop_weights_quo <- read.csv(here("output/CV/pop_weights_quo.csv"))
 
-fig4_data <- pop_weights_hier |>
+fig4_data <- pop_weights_quo |>
   pivot_wider(names_from = Model, values_from = Weight) |>
   mutate(pop = str_to_title(gsub("-", " ", Pop))) |>
   left_join(pop_data, by = "pop") |>
   select(-Pop) |>
   relocate(pop, 1)
 
-p1 <- ggplot(fig4_data,aes(sr_pairs, m4a)) +
+p1 <- ggplot(fig4_data,aes(sr_pairs, m2b)) +
   theme_classic() +
   geom_point(aes(color = region)) +
-  geom_hline(yintercept = 0, 
-             lty = 2) +
-  annotate("text", x = 5, y = 1.1, label = "(A)") +
+  annotate("text", x = 5, y = 1.2, label = "(A)") +
   theme(legend.position = "bottom", 
         legend.title = element_text(size = 9),
         legend.text = element_text(size = 7),
@@ -513,14 +512,10 @@ p1 <- ggplot(fig4_data,aes(sr_pairs, m4a)) +
   labs(x = "Years of SR pairs", 
        y = NULL)
 
-p2 <- ggplot(filter(fig4_data, est_origin != "both"), aes(est_origin, m4a)) +
-  geom_violin(#aes(fill=est_origin), 
-              alpha = 0.5, 
-              draw_quantiles = 0.5) +
-    geom_hline(yintercept = 0, 
-             lty = 2) +
+p2 <- ggplot(filter(fig4_data, est_origin != "both"), aes(est_origin, m2b)) +
+  geom_violin(draw_quantiles = 0.5) +
   geom_jitter(width = 0.25) +
-  #annotate("text", x= .52, y = 1.1, label = "(B)") +
+  annotate("text", x= .52, y = 1.2, label = "(B)") +
   theme_classic() +
   theme(text = element_text(family="serif"),
         legend.position= "bottom", 
@@ -532,14 +527,12 @@ p2 <- ggplot(filter(fig4_data, est_origin != "both"), aes(est_origin, m4a)) +
   scale_x_discrete(labels = c("empirical", "modeled")) +
   labs(x= "PR estimate method", y=NULL) 
 
-p3 <- ggplot(fig4_data, aes(region, m4a)) +
+p3 <- ggplot(fig4_data, aes(region, m2b)) +
       geom_violin(#aes(fill=est_origin), 
                   alpha = 0.5, 
                   draw_quantiles = 0.5) +
   geom_jitter(width = 0.25) +
-    geom_hline(yintercept = 0, 
-             lty = 2) +
-  #annotate("text", x= .6, y = 1.1, label = "(C)") +
+  annotate("text", x= .6, y = 1.2, label = "(C)") +
   theme_classic() +
   theme(text = element_text(family="serif")) +
   scale_fill_viridis_d() +
@@ -547,15 +540,12 @@ p3 <- ggplot(fig4_data, aes(region, m4a)) +
   labs(x= "Region", y=NULL) +
   guides(fill="none")
 
-p4 <- ggplot(fig4_data, aes(water_clarity, m4a)) +
+p4 <- ggplot(fig4_data, aes(water_clarity, m2b)) +
   geom_violin(#aes(fill=est_origin), 
               alpha = 0.5, 
               draw_quantiles = 0.5) +
   geom_jitter(width = 0.25) +
-
-  geom_hline(yintercept = 0, 
-             lty = 2) +
-  #annotate("text", x= .6, y = 1.1, label = "(D)") +
+  annotate("text", x= .6, y = 1.2, label = "(D)") +
   theme_classic() +
   theme(text = element_text(family="serif")) + 
   scale_fill_viridis_d() +
@@ -565,7 +555,7 @@ p4 <- ggplot(fig4_data, aes(water_clarity, m4a)) +
 pw <- ((p1/p3)|(p2/p4))
 
 p <- gridExtra::grid.arrange(patchworkGrob(pw), 
-                        left = textGrob(expression("M4a looic stacked weight (m4a vs m2a)"), 
+                        left = textGrob(expression("M2b looic stacked weight (m2b vs m1)"), 
                                         gp = gpar(fontfamily = "serif"), rot=90))
 #^ from https://statisticsglobe.com/add-subscript-and-superscript-to-plot-in-r example 3
 
