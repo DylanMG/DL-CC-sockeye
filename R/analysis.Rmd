@@ -27,6 +27,7 @@ always_allow_html: yes
 library(tidyverse)
 library(here)
 library(ggh4x) #to control facetting
+library(scales) #for pretty_breaks()
 library(rstan) #to interface R with Stan
 library(bayesplot) #for mcmc_combo plots
 library(loo) #for looic
@@ -325,21 +326,23 @@ write.csv(OOS_loo_table, here("output/pub_tables/table1.csv"), row.names = FALSE
 
 ```{r SSmsy}
 #get median Smsy from model 4 for Will 
-avg_S <- SR_data |>
-  filter(year>=2014) 
-
-S_Smsy <- all_draws |>
+m4a_Smsy <- all_draws |>
   filter(model == "m4a") |>
   group_by(pop) |>
   summarise(Smsy_med = median(Smsy))
 
-write.csv(M4_Smsy, here("output/data/M4a_Smsy_med.csv"), row.names = FALSE)
-#print figure from file. figure was made by Jon Hart at Wild Salmon Centre
+S_Smsy <- read.csv(here("data/M4_Smsy_med+recent escapements_DG.csv")) |>
+  mutate(s_smsy = as.numeric(s_smsy))
+
+length(which(is.na(S_Smsy$s_smsy)))/nrow(S_Smsy) #%NAs
+length(which(S_Smsy$s_smsy>1))/length(which(!is.na(S_Smsy$s_smsy))) #% above Smsy
+length(which(S_Smsy$s_smsy<1))/length(which(!is.na(S_Smsy$s_smsy))) #% below Smsy
 ```
 ### Figure 1  
 
 ```{r fig1, fig.width=5.62, fig.height=4.215, dpi= 300}
-fig_1_data <- filter(all_draws, pop %in% c( "Johnston", "Kainet", "Slamgeesh", "Skidegate", "Mathers", "Morice", "Atnarko", "Canoona", "Owikeno")) |>
+fig_1_data <- filter(all_draws, pop %in% c("Johnston", "Kainet", "Slamgeesh", "Skidegate", 
+                                            "Mathers", "Morice", "Atnarko", "Canoona", "Owikeno")) |>
   left_join(pop_data, by = "pop") |>
   mutate(data_quality = case_when(pop %in% c("Mathers", "Johnston", "Slamgeesh") ~ "low", #<15,  
                                   pop %in% c("Atnarko", "Canoona", "Kainet") ~ "medium", #20-40
@@ -351,19 +354,16 @@ fig_1_data |>
   distinct() |>
   arrange(region.x, data_quality)
 
-ggplot(fig_1_data, aes(model, log_a)) +
+p <- ggplot(fig_1_data, aes(model, log_a)) +
   geom_violin(fill = "grey",
               draw_quantiles = 0.5) +
   facet_grid(region.x~data_quality) +
-  geom_text(x=2, y = 3, aes(label = pop))+ #writes it a ton
-  theme_bw()
+  geom_label(x=2.4, y = 3.7, aes(label = pop), stat = "unique", family = "serif")+ #writes it a ton
+  labs(x = "Model", y = expression("log("*alpha*")")) +
+  theme_bw() +
+  theme(text = element_text(family="serif"))
 
-ggplot(fig_1_data, aes(model, log_a)) +
-  geom_violin(fill = "grey",
-              draw_quantiles = 0.5) +
-  facet_wrap(~pop) +
-  geom_text(x=.2, y = 3, aes(label = pop))+ #MAKE BETTER!
-  theme_bw()
+p
 
 ggsave(here("output/pub_figs/fig1.png"), 
        plot = p,
@@ -376,13 +376,14 @@ ggsave(here("output/pub_figs/fig1.png"),
 ```{r fig2 wrangle}
 index_df <- cbind(pop_data$pop, as.numeric(as.factor(pop_data$pop))) #helper df for the loop 
 
-lakes <- c("Babine", "Long", "Meziadin", "Owikeno", "Asitika", "Bear", "Bowser", "Morice")
+lakes <- c("Johnston", "Kainet", "Owikeno", "Slamgeesh", "Atnarko", "Morice", "Mathers", 
+           "Canoona", "Skidegate")
 
 fig2_preds <- NULL
 fig2_data <- NULL
 
 for(i in unique(lakes)){
-  for(j in c("m2a", "m4a")){
+  for(j in c("m1", "m2b")){
     sub_draw <- filter(all_draws, pop==i, model==j)
     sub_dat <- filter(SR_data, pop==tolower(i))
     
@@ -411,27 +412,40 @@ for(i in unique(lakes)){
 colnames(fig2_preds) <- c("Spawn", "Rec_lwr", "Rec_med", "Rec_upr", "pop", "model")
 
 fig2_preds <- fig2_preds |>
-  mutate(pop = factor(pop, levels = lakes))
+  left_join(pop_data, by = "pop") |>
+  mutate(pop = factor(str_to_title(pop), levels = lakes)) |>
+    mutate(data_quality = case_when(pop %in% c("Mathers", "Johnston", "Slamgeesh") ~ "low", #<15,  
+                                  pop %in% c("Atnarko", "Canoona", "Kainet") ~ "medium", #20-40
+         pop %in% c("Morice", "Owikeno", "Skidegate") ~ "high"),#40+
+         data_quality = factor(data_quality, levels = c("low", "medium", "high"))) 
 
 fig2_data <- fig2_data |>
-  mutate(pop = factor(str_to_title(pop), levels = lakes))
+  left_join(pop_data, by = "pop") |>
+    mutate(pop = factor(str_to_title(pop), levels = lakes)) |>
+
+  mutate(data_quality = case_when(pop %in% c("Mathers", "Johnston", "Slamgeesh") ~ "low", #<15,  
+                                  pop %in% c("Atnarko", "Canoona", "Kainet") ~ "medium", #20-40
+         pop %in% c("Morice", "Owikeno", "Skidegate") ~ "high"),#40+
+         data_quality = factor(data_quality, levels = c("low", "medium", "high"))) 
 
 p <- ggplot() +
   geom_ribbon(data = fig2_preds, aes(x = Spawn/1000, ymin = Rec_lwr/1000, ymax = Rec_upr/1000, 
                                       fill = model, color = model), alpha=0.5) +
   geom_line(data = fig2_preds, aes(x = Spawn/1000, y = Rec_med/1000, color=model), linewidth = 1) +
   geom_point(data = fig2_data, aes(x=exp_spawn/1000, y=total_rec/1000)) +
-  facet_wrap(~pop, scales="free", nrow=2) +
+  #ggh4x::facet_grid2(region.x~data_quality, scales = "free", independent=c("x", "y")) +
+  facet_wrap(~pop, scales = "free") +
   theme_classic() +
   scale_fill_viridis_d(name = "Model", 
-                       labels = c("2a", "4a")) +
+                       labels = c("1", "2b")) +
   scale_color_viridis_d() +
   theme(text = element_text(family="serif"),
         legend.position= "bottom", 
         legend.title = element_text(size=9),
         legend.text = element_text(size=7),
         legend.key.size = unit(.5, "cm")) +
-        labs(y = "Recruits (thousands)", x = "Spawners (thousands)") +
+        labs(y = "Recruits (1000s)", x = "Spawners (1000s)") +
+  scale_x_continuous(breaks = pretty_breaks()) +
   guides(color="none")
 
 p
@@ -449,7 +463,7 @@ ggsave(here("output/pub_figs/fig2.png"),
 p <- ggplot(filter(all_draws, model == "m4a"), aes(region, log_a)) +
   geom_violin(fill = "grey",
               draw_quantiles = 0.5) +
-  labs(title = "Regional Productuvity in Model 1", 
+  labs(title = "Regional Productuvity in Model 4a", 
         y = "log(alpha)", 
        x = "Region") +
   theme_bw() +
