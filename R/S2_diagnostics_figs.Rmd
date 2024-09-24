@@ -103,12 +103,12 @@ mcmc_combo(fits[[1]], combo = c("dens_overlay", "trace"),
            gg_theme = legend_none())
 fit1.summary  <- as.data.frame(rstan::summary(fits[[1]])$summary)
 paste("max R-hat =", max(fit1.summary$Rhat, na.rm = TRUE))
-paste("min ESS =", round((min(fit1.summary$n_eff, na.rm = TRUE)/iter*4)*100), "%")
+paste("min ESS =", round((min(fit1.summary$n_eff, na.rm = TRUE)/iter*2)*100), "%") #*2 since the first half is discarded
 loo(fits[[1]])
 plot(loo(fits[[1]]))
 ggplot(fit1.summary, aes(n_eff)) +
   geom_histogram() +
-  geom_vline(xintercept = iter*4*.1, lty=2) + #could annotate a "10%" here too 
+  geom_vline(xintercept = iter*2*.1, lty=2) + #could annotate a "10%" here too 
   theme_classic() +
   labs(x = "effective sample size")
 
@@ -130,12 +130,12 @@ mcmc_combo(fits[[2]], combo = c("dens_overlay", "trace"),
            gg_theme = legend_none())
 fit2a.summary  <- as.data.frame(rstan::summary(fits[[2]])$summary)
 paste("max R-hat =", max(fit2a.summary$Rhat, na.rm = TRUE))
-paste("min ESS =", round((min(fit2a.summary$n_eff, na.rm = TRUE)/iter*4)*100), "%")
+paste("min ESS =", round((min(fit2a.summary$n_eff, na.rm = TRUE)/iter*2)*100), "%")
 loo(fits[[2]])
 plot(loo(fits[[2]]))
 ggplot(fit2a.summary, aes(n_eff)) +
   geom_histogram() +
-  geom_vline(xintercept = iter*4*.1, lty=2) +
+  geom_vline(xintercept = iter*2*.1, lty=2) +
   theme_classic() +
   labs(x = "effective sample size")
 
@@ -159,12 +159,12 @@ mcmc_combo(fits[[3]], combo = c("dens_overlay", "trace"),
            gg_theme = legend_none()) 
 fit2b.summary  <- as.data.frame(rstan::summary(fits[[3]])$summary)
 paste("max R-hat =", max(fit2b.summary$Rhat, na.rm = TRUE))
-paste("min ESS =", round((min(fit2b.summary$n_eff, na.rm = TRUE)/iter*4)*100), "%")
+paste("min ESS =", round((min(fit2b.summary$n_eff, na.rm = TRUE)/iter*2)*100), "%")
 loo(fits[[3]])
 plot(loo(fits[[3]]))
 ggplot(fit2b.summary, aes(n_eff)) +
   geom_histogram() +
-  geom_vline(xintercept = iter*4*.1, lty=2) +
+  geom_vline(xintercept = iter*2*.1, lty=2) +
   theme_classic() +
   labs(x = "effective sample size")
 
@@ -185,12 +185,12 @@ mcmc_combo(fits[[4]], combo = c("dens_overlay", "trace"),
            gg_theme = legend_none())
 fit3.summary  <- as.data.frame(rstan::summary(fits[[4]])$summary)
 paste("max R-hat =", max(fit3.summary$Rhat, na.rm = TRUE))
-paste("min ESS =", round((min(fit3.summary$n_eff, na.rm = TRUE)/iter*4)*100), "%")
+paste("min ESS =", round((min(fit3.summary$n_eff, na.rm = TRUE)/iter*2)*100), "%")
 loo(fits[[4]])
 plot(loo(fits[[4]]))
 ggplot(fit3.summary, aes(n_eff)) +
   geom_histogram() +
-  geom_vline(xintercept = iter*4*.1, lty=2) +
+  geom_vline(xintercept = iter*2*.1, lty=2) +
   theme_classic() +
   labs(x = "effective sample size")
 
@@ -211,12 +211,12 @@ mcmc_combo(fits[[5]], combo = c("dens_overlay", "trace"),
            gg_theme = legend_none())
 fit4a.summary  <- as.data.frame(rstan::summary(fits[[5]])$summary)
 paste("max R-hat =", max(fit4a.summary$Rhat, na.rm = TRUE))
-paste("min ESS =", round((min(fit4a.summary$n_eff, na.rm = TRUE)/iter*4)*100), "%")
+paste("min ESS =", round((min(fit4a.summary$n_eff, na.rm = TRUE)/iter*2)*100), "%")
 loo(fits[[5]])
 plot(loo(fits[[5]]))
 ggplot(fit4a.summary, aes(n_eff)) +
   geom_histogram() +
-  geom_vline(xintercept = iter*4*.1, lty=2) +
+  geom_vline(xintercept = iter*2*.1, lty=2) +
   theme_classic() +
   labs(x = "effective sample size")
 
@@ -241,12 +241,12 @@ mcmc_combo(fits[[6]], combo = c("dens_overlay", "trace"),
            gg_theme = legend_none()) 
 fit4b.summary  <- as.data.frame(rstan::summary(fits[[6]])$summary)
 paste("max R-hat =", max(fit4b.summary$Rhat, na.rm = TRUE))
-paste("min ESS =", round((min(fit4b.summary$n_eff, na.rm = TRUE)/iter*4)*100), "%")
+paste("min ESS =", round((min(fit4b.summary$n_eff, na.rm = TRUE)/iter*2)*100), "%")
 loo(fits[[6]])
 plot(loo(fits[[6]]))
 ggplot(fit4b.summary, aes(n_eff)) +
   geom_histogram() +
-  geom_vline(xintercept = iter*4*.1, lty=2) +
+  geom_vline(xintercept = iter*2*.1, lty=2) +
   theme_classic() +
   labs(x = "effective sample size")
 
