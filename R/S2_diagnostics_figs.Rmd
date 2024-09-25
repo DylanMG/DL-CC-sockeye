@@ -381,7 +381,7 @@ for(i in 1:pages){
 }
 ```
 
-### Models 1 and 2b fit to data
+## Models 1 and 2b fit to data
 
 ```{r m1 & m4 to data}
 if(TRUE){
@@ -458,7 +458,9 @@ for(i in 1:pages){
 }
 ```
 
-### Population weights with and without informative prior
+## Population weights with and without informative prior  
+
+LOOIC stacking weights compared between models 4a and 2a to highlight where the informative prior helped in hierarchical models.  
 
 ```{r fig4, fig.width=5.62, fig.height=4.215, dpi= 300}
 pop_weights_hier <- read.csv(here("output/CV/pop_weights_hier.csv"))
@@ -530,10 +532,8 @@ p4 <- ggplot(fig_data, aes(water_clarity, m4a)) +
 
 pw <- ((p1/p3)|(p2/p4))
 
-p <- gridExtra::grid.arrange(patchworkGrob(pw), 
+gridExtra::grid.arrange(patchworkGrob(pw), 
                         left = textGrob(expression("M4a looic stacked weight (m4a vs m2a)"), 
                                         gp = gpar(fontfamily = "serif"), rot=90))
 #^ from https://statisticsglobe.com/add-subscript-and-superscript-to-plot-in-r example 3
-
-print(p)
 ```
