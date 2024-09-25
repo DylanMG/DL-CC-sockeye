@@ -475,6 +475,7 @@ fig_data <- pop_weights_hier |>
 p1 <- ggplot(fig_data,aes(sr_pairs, m4a)) +
   theme_classic() +
   geom_point(aes(color = region)) +
+  geom_hline(yintercept = 0.5, lty = 2) +
   annotate("text", x = 5, y = 1.2, label = "(A)") +
   theme(legend.position = "bottom", 
         legend.title = element_text(size = 9),
@@ -492,6 +493,7 @@ p1 <- ggplot(fig_data,aes(sr_pairs, m4a)) +
 
 p2 <- ggplot(filter(fig_data, est_origin != "both"), aes(est_origin, m4a)) +
   geom_violin(draw_quantiles = 0.5) +
+  geom_hline(yintercept = 0.5, lty = 2) +
   geom_jitter(width = 0.25) +
   annotate("text", x= .52, y = 1.2, label = "(B)") +
   theme_classic() +
@@ -509,6 +511,7 @@ p3 <- ggplot(fig_data, aes(region, m4a)) +
       geom_violin(#aes(fill=est_origin), 
                   alpha = 0.5, 
                   draw_quantiles = 0.5) +
+  geom_hline(yintercept = 0.5, lty = 2) +
   geom_jitter(width = 0.25) +
   annotate("text", x= .6, y = 1.2, label = "(C)") +
   theme_classic() +
@@ -523,6 +526,7 @@ p4 <- ggplot(fig_data, aes(water_clarity, m4a)) +
               alpha = 0.5, 
               draw_quantiles = 0.5) +
   geom_jitter(width = 0.25) +
+  geom_hline(yintercept = 0.5, lty = 2) +
   annotate("text", x= .6, y = 1.2, label = "(D)") +
   theme_classic() +
   theme(text = element_text(family="serif")) + 
