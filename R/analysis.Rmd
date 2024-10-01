@@ -461,11 +461,10 @@ ggsave(here("output/pub_figs/fig2.png"),
 ### Figure 3  
 
 ```{r fig3, fig.width=5.62, fig.height=4.215, dpi= 300}
-p <- ggplot(filter(all_draws, model == "m2b"), aes(region, log_a)) +
+p <- ggplot(filter(all_draws, model == "m2b"), aes(region, exp(log_a))) +
   geom_violin(fill = "grey",
               draw_quantiles = 0.5) +
-  labs(title = "Regional Productuvity in Model 2b", 
-        y = expression("log("*alpha*")"), 
+  labs(y = expression(alpha), 
        x = "Region") +
   theme_bw() +
   scale_x_discrete(labels = c("coastal fjord", "interior", "low coastal")) +
