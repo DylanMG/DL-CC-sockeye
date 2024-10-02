@@ -326,11 +326,11 @@ write.csv(OOS_loo_table, here("output/pub_tables/table1.csv"), row.names = FALSE
 
 ```{r SSmsy}
 #get median Smsy from model 4 for Will 
-m2b_Smsy <- all_draws |>
-  filter(model == "m2b") |>
+m4b_Smsy <- all_draws |>
+  filter(model == "m4b") |>
   group_by(pop) |>
   summarise(Smsy_med = median(Smsy))
-#write.csv(m2b_Smsy, "C:/Users/GLASERD/Desktop/m2b_Smsy_med.csv", row.names = FALSE)
+write.csv(m4b_Smsy, "C:/Users/GLASERD/Desktop/m4b_Smsy_med.csv", row.names = FALSE)
 
 S_Smsy <- read.csv(here("data/M4_Smsy_med+recent escapements_DG.csv")) |>
   mutate(s_smsy = as.numeric(s_smsy))
@@ -339,6 +339,7 @@ length(which(is.na(S_Smsy$s_smsy)))/nrow(S_Smsy) #%NAs
 length(which(S_Smsy$s_smsy>1))/length(which(!is.na(S_Smsy$s_smsy))) #% above Smsy
 length(which(S_Smsy$s_smsy<1))/length(which(!is.na(S_Smsy$s_smsy))) #% below Smsy
 ```
+
 ### Figure 1  
 
 ```{r fig1, fig.width=5.62, fig.height=4.215, dpi= 300}
@@ -372,6 +373,7 @@ ggsave(here("output/pub_figs/fig1.png"),
        height = 4.22, 
        dpi = 300)
 ```
+
 ### Figure 2   
 
 ```{r fig2 wrangle}
@@ -384,7 +386,7 @@ fig2_preds <- NULL
 fig2_data <- NULL
 
 for(i in unique(lakes)){
-  for(j in c("m1", "m2b")){
+  for(j in c("m1", "m4b")){
     sub_draw <- filter(all_draws, pop==i, model==j)
     sub_dat <- filter(SR_data, pop==tolower(i))
     
@@ -438,7 +440,7 @@ p <- ggplot() +
   facet_wrap(~pop, scales = "free") +
   theme_classic() +
   scale_fill_viridis_d(name = "Model", 
-                       labels = c("1", "2b")) +
+                       labels = c("1", "4b")) +
   scale_color_viridis_d() +
   theme(text = element_text(family="serif"),
         legend.position= "bottom", 
@@ -461,10 +463,10 @@ ggsave(here("output/pub_figs/fig2.png"),
 ### Figure 3  
 
 ```{r fig3, fig.width=5.62, fig.height=4.215, dpi= 300}
-p <- ggplot(filter(all_draws, model == "m2b"), aes(region, exp(log_a))) +
+p <- ggplot(filter(all_draws, model == "m4b"), aes(region, log_a)) +
   geom_violin(fill = "grey",
               draw_quantiles = 0.5) +
-  labs(y = expression(alpha), 
+  labs(y = expression("ln("*alpha*")"), 
        x = "Region") +
   theme_bw() +
   scale_x_discrete(labels = c("coastal fjord", "interior", "low coastal")) +
@@ -481,7 +483,7 @@ print(p)
 ```
 
 ### Figure 4  
-Difference in LOOIC weight
+Difference in OOS-CV weight between top and status quo
 
 ```{r fig4, fig.width=5.62, fig.height=4.215, dpi= 300}
 pop_weights_quo <- read.csv(here("output/CV/pop_weights_quo.csv"))
@@ -493,7 +495,7 @@ fig4_data <- pop_weights_quo |>
   select(-Pop) |>
   relocate(pop, 1)
 
-p1 <- ggplot(fig4_data,aes(sr_pairs, m2b)) +
+p1 <- ggplot(fig4_data,aes(sr_pairs, m4b)) +
   theme_classic() +
   geom_point(aes(color = region)) +
   geom_hline(yintercept = 0.5, lty = 2) +
@@ -512,7 +514,7 @@ p1 <- ggplot(fig4_data,aes(sr_pairs, m2b)) +
   labs(x = "Years of SR pairs", 
        y = NULL)
 
-p2 <- ggplot(filter(fig4_data, est_origin != "both"), aes(est_origin, m2b)) +
+p2 <- ggplot(filter(fig4_data, est_origin != "both"), aes(est_origin, m4b)) +
   geom_violin(draw_quantiles = 0.5) +
   geom_jitter(width = 0.25) +
   geom_hline(yintercept = 0.5, lty = 2) +
@@ -528,7 +530,7 @@ p2 <- ggplot(filter(fig4_data, est_origin != "both"), aes(est_origin, m2b)) +
   scale_x_discrete(labels = c("empirical", "modeled")) +
   labs(x= "PR estimate method", y=NULL) 
 
-p3 <- ggplot(fig4_data, aes(region, m2b)) +
+p3 <- ggplot(fig4_data, aes(region, m4b)) +
       geom_violin(#aes(fill=est_origin), 
                   alpha = 0.5, 
                   draw_quantiles = 0.5) +
@@ -542,7 +544,7 @@ p3 <- ggplot(fig4_data, aes(region, m2b)) +
   labs(x= "Region", y=NULL) +
   guides(fill="none")
 
-p4 <- ggplot(fig4_data, aes(water_clarity, m2b)) +
+p4 <- ggplot(fig4_data, aes(water_clarity, m4b)) +
   geom_violin(#aes(fill=est_origin), 
               alpha = 0.5, 
               draw_quantiles = 0.5) +
@@ -558,7 +560,7 @@ p4 <- ggplot(fig4_data, aes(water_clarity, m2b)) +
 pw <- ((p1/p3)|(p2/p4))
 
 p <- gridExtra::grid.arrange(patchworkGrob(pw), 
-                        left = textGrob(expression("M2b looic stacked weight (m2b vs m1)"), 
+                        left = textGrob(expression("M4b stacked OOS-CV weight (m4b vs m1)"), 
                                         gp = gpar(fontfamily = "serif"), rot=90))
 #^ from https://statisticsglobe.com/add-subscript-and-superscript-to-plot-in-r example 3
 
@@ -570,5 +572,92 @@ ggsave(here("output/pub_figs/fig4.png"),
        dpi = 300)
 ```
 
+### Figure 5  
+Difference in OOS-CV weight between with (4b) and without (2b) informative piors
 
+```{r fig4, fig.width=5.62, fig.height=4.215, dpi= 300}
+pop_weights_hier <- read.csv(here("output/CV/pop_weights_hier.csv"))
 
+fig5_data <- pop_weights_hier |>
+  pivot_wider(names_from = Model, values_from = Weight) |>
+  mutate(pop = str_to_title(gsub("-", " ", Pop))) |>
+  left_join(pop_data, by = "pop") |>
+  select(-Pop) |>
+  relocate(pop, 1)
+
+p1 <- ggplot(fig5_data,aes(sr_pairs, m4b)) +
+  theme_classic() +
+  geom_point(aes(color = region)) +
+  geom_hline(yintercept = 0.5, lty = 2) +
+  annotate("text", x = 5, y = 1.2, label = "(A)") +
+  theme(legend.position = "bottom", 
+        legend.title = element_text(size = 9),
+        legend.text = element_text(size = 7),
+        legend.key.size = unit(.1, "cm"),
+        text = element_text(family = "serif")) + 
+  scale_color_viridis_d(name = "Region", 
+                       labels = c("coastal fjord", "interior", "low coastal")) +
+  stat_smooth(method = "loess", 
+              color = "black",
+              se = FALSE, 
+              alpha = 0.5) +
+  labs(x = "Years of SR pairs", 
+       y = NULL)
+
+p2 <- ggplot(filter(fig5_data, est_origin != "both"), aes(est_origin, m4b)) +
+  geom_violin(draw_quantiles = 0.5) +
+  geom_jitter(width = 0.25) +
+  geom_hline(yintercept = 0.5, lty = 2) +
+  annotate("text", x= .52, y = 1.2, label = "(B)") +
+  theme_classic() +
+  theme(text = element_text(family="serif"),
+        legend.position= "bottom", 
+        legend.title = element_text(size=9),
+        legend.text = element_text(size=7),
+        legend.key.size = unit(.5, "cm"),) + 
+  scale_fill_viridis_d(name = "Estimate method", 
+                       labels = c("empirical", "modeled")) +
+  scale_x_discrete(labels = c("empirical", "modeled")) +
+  labs(x= "PR estimate method", y=NULL) 
+
+p3 <- ggplot(fig5_data, aes(region, m4b)) +
+      geom_violin(#aes(fill=est_origin), 
+                  alpha = 0.5, 
+                  draw_quantiles = 0.5) +
+  geom_jitter(width = 0.25) +
+  geom_hline(yintercept = 0.5, lty = 2) +
+  annotate("text", x= .6, y = 1.2, label = "(C)") +
+  theme_classic() +
+  theme(text = element_text(family="serif")) +
+  scale_fill_viridis_d() +
+  scale_x_discrete(labels = c("coastal fjord", "interior", "low coastal")) +
+  labs(x= "Region", y=NULL) +
+  guides(fill="none")
+
+p4 <- ggplot(fig5_data, aes(water_clarity, m4b)) +
+  geom_violin(#aes(fill=est_origin), 
+              alpha = 0.5, 
+              draw_quantiles = 0.5) +
+  geom_jitter(width = 0.25) +
+  geom_hline(yintercept = 0.5, lty = 2) +
+  annotate("text", x= .6, y = 1.2, label = "(D)") +
+  theme_classic() +
+  theme(text = element_text(family="serif")) + 
+  scale_fill_viridis_d() +
+  labs(x= "Water clarity", y=NULL) +
+  guides(fill="none")
+
+pw <- ((p1/p3)|(p2/p4))
+
+p <- gridExtra::grid.arrange(patchworkGrob(pw), 
+                        left = textGrob(expression("M4b stacked OOS-CV weight (m4b vs m2b)"), 
+                                        gp = gpar(fontfamily = "serif"), rot=90))
+#^ from https://statisticsglobe.com/add-subscript-and-superscript-to-plot-in-r example 3
+
+print(p)
+ggsave(here("output/pub_figs/fig5.png"), 
+       plot = p,
+       width = 5.61, 
+       height = 4.22, 
+       dpi = 300)
+```

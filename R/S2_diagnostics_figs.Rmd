@@ -381,15 +381,15 @@ for(i in 1:pages){
 }
 ```
 
-## Models 1 and 2b fit to data
+## Models 1 and 4b fit to data
 
-```{r m1 & m4 to data}
+```{r m1 & m4b to data}
 if(TRUE){
 fig_preds <- NULL
 fig_data <- NULL
 
 for(i in unique(all_draws$pop)){
-  for(j in c("m1", "m2b")){ #add or adjust the models as seen fit
+  for(j in c("m1", "m4b")){ #add or adjust the models as seen fit
     sub_draw <- filter(all_draws, pop==i, model==j)
     sub_dat <- filter(SR_data, pop==gsub(" ", "-", tolower(i)))
     
@@ -458,86 +458,6 @@ for(i in 1:pages){
 }
 ```
 
-## Population weights with and without informative prior  
+## Model weights by population  
 
-LOOIC stacking weights compared between models 4a and 2a to highlight where the informative prior helped in hierarchical models.  
-
-```{r fig4, fig.width=5.62, fig.height=4.215, dpi= 300}
-pop_weights_hier <- read.csv(here("output/CV/pop_weights_hier.csv"))
-
-fig_data <- pop_weights_hier |>
-  pivot_wider(names_from = Model, values_from = Weight) |>
-  mutate(pop = str_to_title(gsub("-", " ", Pop))) |>
-  left_join(pop_data, by = "pop") |>
-  select(-Pop) |>
-  relocate(pop, 1)
-
-p1 <- ggplot(fig_data,aes(sr_pairs, m4a)) +
-  theme_classic() +
-  geom_point(aes(color = region)) +
-  geom_hline(yintercept = 0.5, lty = 2) +
-  annotate("text", x = 5, y = 1.2, label = "(A)") +
-  theme(legend.position = "bottom", 
-        legend.title = element_text(size = 9),
-        legend.text = element_text(size = 7),
-        legend.key.size = unit(.1, "cm"),
-        text = element_text(family = "serif")) + 
-  scale_color_viridis_d(name = "Region", 
-                       labels = c("coastal fjord", "interior", "low coastal")) +
-  stat_smooth(method = "loess", 
-              color = "black",
-              se = FALSE, 
-              alpha = 0.5) +
-  labs(x = "Years of SR pairs", 
-       y = NULL)
-
-p2 <- ggplot(filter(fig_data, est_origin != "both"), aes(est_origin, m4a)) +
-  geom_violin(draw_quantiles = 0.5) +
-  geom_hline(yintercept = 0.5, lty = 2) +
-  geom_jitter(width = 0.25) +
-  annotate("text", x= .52, y = 1.2, label = "(B)") +
-  theme_classic() +
-  theme(text = element_text(family="serif"),
-        legend.position= "bottom", 
-        legend.title = element_text(size=9),
-        legend.text = element_text(size=7),
-        legend.key.size = unit(.5, "cm"),) + 
-  scale_fill_viridis_d(name = "Estimate method", 
-                       labels = c("empirical", "modeled")) +
-  scale_x_discrete(labels = c("empirical", "modeled")) +
-  labs(x= "PR estimate method", y=NULL) 
-
-p3 <- ggplot(fig_data, aes(region, m4a)) +
-      geom_violin(#aes(fill=est_origin), 
-                  alpha = 0.5, 
-                  draw_quantiles = 0.5) +
-  geom_hline(yintercept = 0.5, lty = 2) +
-  geom_jitter(width = 0.25) +
-  annotate("text", x= .6, y = 1.2, label = "(C)") +
-  theme_classic() +
-  theme(text = element_text(family="serif")) +
-  scale_fill_viridis_d() +
-  scale_x_discrete(labels = c("coastal fjord", "interior", "low coastal")) +
-  labs(x= "Region", y=NULL) +
-  guides(fill="none")
-
-p4 <- ggplot(fig_data, aes(water_clarity, m4a)) +
-  geom_violin(#aes(fill=est_origin), 
-              alpha = 0.5, 
-              draw_quantiles = 0.5) +
-  geom_jitter(width = 0.25) +
-  geom_hline(yintercept = 0.5, lty = 2) +
-  annotate("text", x= .6, y = 1.2, label = "(D)") +
-  theme_classic() +
-  theme(text = element_text(family="serif")) + 
-  scale_fill_viridis_d() +
-  labs(x= "Water clarity", y=NULL) +
-  guides(fill="none")
-
-pw <- ((p1/p3)|(p2/p4))
-
-gridExtra::grid.arrange(patchworkGrob(pw), 
-                        left = textGrob(expression("M4a looic stacked weight (m4a vs m2a)"), 
-                                        gp = gpar(fontfamily = "serif"), rot=90))
-#^ from https://statisticsglobe.com/add-subscript-and-superscript-to-plot-in-r example 3
-```
+**add table?**
