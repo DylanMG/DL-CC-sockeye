@@ -292,7 +292,7 @@ all_draws <- get_draws(models, pop_data)
 
 # Tables  
 
-Table 1. looic among models  
+Table 1. elpd and weight among models  
 ```{r table1}
 mod_notes <- data.frame(Model = c("m1", "m2a", "m2b", "m3", "m4a", "m4b"), 
                         Description = c("status quo", "hierarchical prod.", "regional-hierarchical prod.", 
@@ -305,19 +305,16 @@ mod_notes <- data.frame(Model = c("m1", "m2a", "m2b", "m3", "m4a", "m4b"),
                                  "",
                                  "35 div. transitions"))
 
-OOS_loo_table <- read.csv(here("output/CV/loos_table.csv")) |>
-  filter(Metric =="looic") |>
-  rename(LOOIC = Estimate) |>
-  mutate(LOOIC = round(LOOIC, 1), 
-         SE = round(SE, 1)) |> 
+elpd_weights_table <- read.csv(here("output/CV/elpd_weights_table.csv")) |>
   left_join(mod_notes, by = "Model") |>
-    select(Model, Description, Weight, LOOIC, SE, Note) |>
-    arrange(desc(Weight))
+    select(Model, Description, Weight, elpd_diff, se_diff, Note) |>
+    arrange(desc(Weight)) |>
+  rename('Stacked weight' = Weight)
 
-datatable(OOS_loo_table,
+datatable(elpd_weights_table,
           rownames = FALSE,
           options = list(dom = 't'))
-write.csv(OOS_loo_table, here("output/pub_tables/table1.csv"), row.names = FALSE)
+write.csv(elpd_weights_table, here("output/pub_tables/table1.csv"), row.names = FALSE)
 ```
 
 # Figures  
@@ -327,10 +324,10 @@ write.csv(OOS_loo_table, here("output/pub_tables/table1.csv"), row.names = FALSE
 ```{r SSmsy}
 #get median Smsy from model 4 for Will 
 m4b_Smsy <- all_draws |>
-  filter(model == "m4b") |>
+  filter(model == "m4a") |>
   group_by(pop) |>
   summarise(Smsy_med = median(Smsy))
-write.csv(m4b_Smsy, "C:/Users/GLASERD/Desktop/m4b_Smsy_med.csv", row.names = FALSE)
+write.csv(m4b_Smsy, "C:/Users/GLASERD/Desktop/m4a_Smsy_med.csv", row.names = FALSE)
 
 S_Smsy <- read.csv(here("data/M4_Smsy_med+recent escapements_DG.csv")) |>
   mutate(s_smsy = as.numeric(s_smsy))
