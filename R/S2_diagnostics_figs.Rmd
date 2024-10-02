@@ -93,7 +93,9 @@ colnames(pop_data) <- tolower(colnames(pop_data))
 ```
 
 ## Diagnostics  
-Here we check if chains have mixed, the maximum $\hat{R}$ is less than 1.05, and that the effective sample size is at least 10% of the iterations, or in our case 800. 
+Here we check if chains have mixed, the maximum $\hat{R}$ is less than 1.05, and that the effective sample size is at least 10% of the iterations, or in our case 800.
+
+In general, trace plots of MCMC samples of leading parameters appeared well mixed in all 6 models. R-hat were less than 1.05, with the exception of models 1 and 2b, where the maximum R-hat were 1.09 and 1.14; large R-hat  were present in 3 of 4316 and 5 of 4324 parameters in these models, respectively.  Minimum effective sample sizes were not met in models 1, 2a and 2b. It appeared these simpler models had a difficult time estimating β parameters (log_b_pop fit summaries in Supplement 2). After trying various parameterizations (e.g. log transformations, centering priors), different model fitting strategies (e.g. increasing iterations, adding chains), and exploring various uninformative priors and prior structures, lower R-hat and higher effective sample sizes were not achieved. However, posterior predictive checks showed the model returned data that fit the model reasonably well. Rather than omitting data poor populations or removing models from this paper, we kept issues with these models in mind and continued with our analysis assessing predictive performance.  
 
 ### Model 1  
 Fits for each population with uninformative priors. We won't plot any `mcmc_combo()` for this because there's too many parameters (3 leading parameters per population[$\alpha$, $\beta$ and $\sigma$], since all are fit independently) to nicely visualize in a summary doc. You can fork the [code](https://github.com/DylanMG/sockeye-hab-SRR-Stan/blob/main/R/model_fitting_comparison.Rmd) and run `rstanarm::launch_shinystan()` to check  models if you want. Just look at the sigma as a check, then report max Rhats later.  
