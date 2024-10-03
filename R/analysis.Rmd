@@ -295,8 +295,8 @@ all_draws <- get_draws(models, pop_data)
 Table 1. elpd and weight among models  
 ```{r table1}
 mod_notes <- data.frame(Model = c("m1", "m2a", "m2b", "m3", "m4a", "m4b"), 
-                        Description = c("status quo", "hierarchical prod.", "regional-hierarchical prod.", 
-                                        "informative capacity only", "hierarcical prod. & informative capacity", 
+                        Description = c("status quo", "hierarchical prod.", "regional-hierarchical  prod.", 
+                                        "informative capacity only", "hierarchical prod. & informative capacity", 
                                         "regional-hierarcical prod. & informative capacity"),
                         Note = c("max. R-hat = 1.09, low min. ESS", 
                                  "low min. ESS", 
@@ -340,13 +340,16 @@ length(which(S_Smsy$s_smsy<1))/length(which(!is.na(S_Smsy$s_smsy))) #% below Sms
 ### Figure 1  
 
 ```{r fig1, fig.width=5.62, fig.height=4.215, dpi= 300}
-fig_1_data <- filter(all_draws, pop %in% c("Johnston", "Kainet", "Slamgeesh", "Skidegate", 
-                                            "Mathers", "Morice", "Atnarko", "Canoona", "Owikeno")) |>
+pops <- c("Johnston", "Kainet", "Owikeno", "Slamgeesh", "Atnarko", "Morice", "Mathers", 
+           "Canoona", "Skidegate")
+fig_1_data <- filter(all_draws, pop %in% pops) |>
   left_join(pop_data, by = "pop") |>
-  mutate(data_quality = case_when(pop %in% c("Mathers", "Johnston", "Slamgeesh") ~ "low", #<15,  
-                                  pop %in% c("Atnarko", "Canoona", "Kainet") ~ "medium", #20-40
-         pop %in% c("Morice", "Owikeno", "Skidegate") ~ "high"),#40+
-         data_quality = factor(data_quality, levels = c("low", "medium", "high"))) 
+  mutate(data_quality = case_when(pop %in% c("Mathers", "Johnston", "Slamgeesh") ~ "<15 SR pairs", #<15,  
+                                  pop %in% c("Atnarko", "Canoona", "Kainet") ~ "20-40 SR pairs", #20-40
+         pop %in% c("Morice", "Owikeno", "Skidegate") ~ "40+ SR pairs"),#40+
+         data_quality = factor(data_quality, levels = c("<15 SR pairs", "20-40 SR pairs", "40+ SR pairs"))) |>
+  mutate(pop = factor(str_to_title(pop), levels = pops))
+
   
 fig_1_data |>
   select(pop, region.x, data_quality, sr_pairs) |>
@@ -356,15 +359,20 @@ fig_1_data |>
 p <- ggplot(fig_1_data, aes(model, log_a)) +
   geom_violin(fill = "grey",
               draw_quantiles = 0.5) +
-  facet_grid(region.x~data_quality) +
-  geom_label(x=2.4, y = 3.7, aes(label = pop), stat = "unique", family = "serif")+ #writes it a ton
+  #facet_grid(region.x~data_quality) + #tried to grid by vars but can't get the next figure to match with the free scales 
+  #geom_label(x=3.5, y = 3.7, aes(label = pop), stat = "unique", family = "serif")+
+  facet_wrap(~pop) +
   labs(x = "Model", y = expression("log("*alpha*")")) +
   theme_bw() +
   theme(text = element_text(family="serif"))
 
 p
 
-ggsave(here("output/pub_figs/fig1.png"), 
+#p <- gridExtra::grid.arrange(patchworkGrob(p),  #adding grob doesnt work
+#                        left = textGrob(expression("M4b stacked OOS-CV weight (m4b vs m1)"), 
+#                                        gp = gpar(fontfamily = "serif"), rot=90))
+
+ggsave(here("output/pub_figs/fig1_pre.png"), 
        plot = p,
        width = 5.61, 
        height = 4.22, 
@@ -376,13 +384,9 @@ ggsave(here("output/pub_figs/fig1.png"),
 ```{r fig2 wrangle}
 index_df <- cbind(pop_data$pop, as.numeric(as.factor(pop_data$pop))) #helper df for the loop 
 
-lakes <- c("Johnston", "Kainet", "Owikeno", "Slamgeesh", "Atnarko", "Morice", "Mathers", 
-           "Canoona", "Skidegate")
-
 fig2_preds <- NULL
 fig2_data <- NULL
-
-for(i in unique(lakes)){
+for(i in unique(pops)){
   for(j in c("m1", "m4b")){
     sub_draw <- filter(all_draws, pop==i, model==j)
     sub_dat <- filter(SR_data, pop==tolower(i))
@@ -413,7 +417,7 @@ colnames(fig2_preds) <- c("Spawn", "Rec_lwr", "Rec_med", "Rec_upr", "pop", "mode
 
 fig2_preds <- fig2_preds |>
   left_join(pop_data, by = "pop") |>
-  mutate(pop = factor(str_to_title(pop), levels = lakes)) |>
+  mutate(pop = factor(str_to_title(pop), levels = pops)) |>
     mutate(data_quality = case_when(pop %in% c("Mathers", "Johnston", "Slamgeesh") ~ "low", #<15,  
                                   pop %in% c("Atnarko", "Canoona", "Kainet") ~ "medium", #20-40
          pop %in% c("Morice", "Owikeno", "Skidegate") ~ "high"),#40+
@@ -421,8 +425,7 @@ fig2_preds <- fig2_preds |>
 
 fig2_data <- fig2_data |>
   left_join(pop_data, by = "pop") |>
-    mutate(pop = factor(str_to_title(pop), levels = lakes)) |>
-
+    mutate(pop = factor(str_to_title(pop), levels = pops)) |>
   mutate(data_quality = case_when(pop %in% c("Mathers", "Johnston", "Slamgeesh") ~ "low", #<15,  
                                   pop %in% c("Atnarko", "Canoona", "Kainet") ~ "medium", #20-40
          pop %in% c("Morice", "Owikeno", "Skidegate") ~ "high"),#40+
@@ -433,9 +436,8 @@ p <- ggplot() +
                                       fill = model, color = model), alpha=0.5) +
   geom_line(data = fig2_preds, aes(x = Spawn/1000, y = Rec_med/1000, color=model), linewidth = 1) +
   geom_point(data = fig2_data, aes(x=exp_spawn/1000, y=total_rec/1000)) +
-  #ggh4x::facet_grid2(region.x~data_quality, scales = "free", independent=c("x", "y")) +
   facet_wrap(~pop, scales = "free") +
-  theme_classic() +
+  theme_bw() +
   scale_fill_viridis_d(name = "Model", 
                        labels = c("1", "4b")) +
   scale_color_viridis_d() +
@@ -444,17 +446,18 @@ p <- ggplot() +
         legend.title = element_text(size=9),
         legend.text = element_text(size=7),
         legend.key.size = unit(.5, "cm")) +
-        labs(y = "Recruits (1000s)", x = "Spawners (1000s)") +
+  labs(y = "Recruits (1000s)", x = "Spawners (1000s)") +
   scale_x_continuous(breaks = pretty_breaks()) +
   guides(color="none")
 
 p
 
-ggsave(here("output/pub_figs/fig2.png"), 
+ggsave(here("output/pub_figs/fig2_pre.png"), 
        plot = p,
        width = 5.61, 
        height = 4.22, 
        dpi = 300)
+
 ```
 
 ### Figure 3  
@@ -496,8 +499,8 @@ p1 <- ggplot(fig4_data,aes(sr_pairs, m4b)) +
   theme_classic() +
   geom_point(aes(color = region)) +
   geom_hline(yintercept = 0.5, lty = 2) +
-  annotate("text", x = 5, y = 1.2, label = "(A)") +
-  theme(legend.position = "bottom", 
+  annotate("text", x = 8, y = 1.2, label = "(A)") +
+  theme(legend.position = "top", 
         legend.title = element_text(size = 9),
         legend.text = element_text(size = 7),
         legend.key.size = unit(.1, "cm"),
@@ -515,7 +518,7 @@ p2 <- ggplot(filter(fig4_data, est_origin != "both"), aes(est_origin, m4b)) +
   geom_violin(draw_quantiles = 0.5) +
   geom_jitter(width = 0.25) +
   geom_hline(yintercept = 0.5, lty = 2) +
-  annotate("text", x= .52, y = 1.2, label = "(B)") +
+  annotate("text", x= .5, y = 1.2, label = "(B)") +
   theme_classic() +
   theme(text = element_text(family="serif"),
         legend.position= "bottom", 
@@ -570,7 +573,7 @@ ggsave(here("output/pub_figs/fig4.png"),
 ```
 
 ### Figure 5  
-Difference in OOS-CV weight between with (4b) and without (2b) informative piors
+Difference in OOS-CV weight between with (4b) and without (2b) informative priors
 
 ```{r fig4, fig.width=5.62, fig.height=4.215, dpi= 300}
 pop_weights_hier <- read.csv(here("output/CV/pop_weights_hier.csv"))
@@ -587,7 +590,7 @@ p1 <- ggplot(fig5_data,aes(sr_pairs, m4b)) +
   geom_point(aes(color = region)) +
   geom_hline(yintercept = 0.5, lty = 2) +
   annotate("text", x = 5, y = 1.2, label = "(A)") +
-  theme(legend.position = "bottom", 
+  theme(legend.position = "top", 
         legend.title = element_text(size = 9),
         legend.text = element_text(size = 7),
         legend.key.size = unit(.1, "cm"),
@@ -653,6 +656,95 @@ p <- gridExtra::grid.arrange(patchworkGrob(pw),
 
 print(p)
 ggsave(here("output/pub_figs/fig5.png"), 
+       plot = p,
+       width = 5.61, 
+       height = 4.22, 
+       dpi = 300)
+```
+
+And another as above comparing 4a with 1
+
+```{r fig4, fig.width=5.62, fig.height=4.215, dpi= 300}
+pop_weights_misc <- read.csv(here("output/CV/pop_weights_misc.csv"))
+
+fig_data <- pop_weights_misc |>
+  pivot_wider(names_from = Model, values_from = Weight) |>
+  mutate(pop = str_to_title(gsub("-", " ", Pop))) |>
+  left_join(pop_data, by = "pop") |>
+  select(-Pop) |>
+  relocate(pop, 1)
+
+p1 <- ggplot(fig_data,aes(sr_pairs, m4a)) +
+  theme_classic() +
+  geom_point(aes(color = region)) +
+  geom_hline(yintercept = 0.5, lty = 2) +
+  annotate("text", x = 5, y = 1.2, label = "(A)") +
+  theme(legend.position = "top", 
+        legend.title = element_text(size = 9),
+        legend.text = element_text(size = 7),
+        legend.key.size = unit(.1, "cm"),
+        text = element_text(family = "serif")) + 
+  scale_color_viridis_d(name = "Region", 
+                       labels = c("coastal fjord", "interior", "low coastal")) +
+  stat_smooth(method = "loess", 
+              color = "black",
+              se = FALSE, 
+              alpha = 0.5) +
+  labs(x = "Years of SR pairs", 
+       y = NULL)
+
+p2 <- ggplot(filter(fig_data, est_origin != "both"), aes(est_origin, m4a)) +
+  geom_violin(draw_quantiles = 0.5) +
+  geom_jitter(width = 0.25) +
+  geom_hline(yintercept = 0.5, lty = 2) +
+  annotate("text", x= .52, y = 1.2, label = "(B)") +
+  theme_classic() +
+  theme(text = element_text(family="serif"),
+        legend.position= "bottom", 
+        legend.title = element_text(size=9),
+        legend.text = element_text(size=7),
+        legend.key.size = unit(.5, "cm"),) + 
+  scale_fill_viridis_d(name = "Estimate method", 
+                       labels = c("empirical", "modeled")) +
+  scale_x_discrete(labels = c("empirical", "modeled")) +
+  labs(x= "PR estimate method", y=NULL) 
+
+p3 <- ggplot(fig_data, aes(region, m4a)) +
+      geom_violin(#aes(fill=est_origin), 
+                  alpha = 0.5, 
+                  draw_quantiles = 0.5) +
+  geom_jitter(width = 0.25) +
+  geom_hline(yintercept = 0.5, lty = 2) +
+  annotate("text", x= .6, y = 1.2, label = "(C)") +
+  theme_classic() +
+  theme(text = element_text(family="serif")) +
+  scale_fill_viridis_d() +
+  scale_x_discrete(labels = c("coastal fjord", "interior", "low coastal")) +
+  labs(x= "Region", y=NULL) +
+  guides(fill="none")
+
+p4 <- ggplot(fig_data, aes(water_clarity, m4a)) +
+  geom_violin(#aes(fill=est_origin), 
+              alpha = 0.5, 
+              draw_quantiles = 0.5) +
+  geom_jitter(width = 0.25) +
+  geom_hline(yintercept = 0.5, lty = 2) +
+  annotate("text", x= .6, y = 1.2, label = "(D)") +
+  theme_classic() +
+  theme(text = element_text(family="serif")) + 
+  scale_fill_viridis_d() +
+  labs(x= "Water clarity", y=NULL) +
+  guides(fill="none")
+
+pw <- ((p1/p3)|(p2/p4))
+
+p <- gridExtra::grid.arrange(patchworkGrob(pw), 
+                        left = textGrob(expression("M4a stacked OOS-CV weight (m4a vs m2a)"), 
+                                        gp = gpar(fontfamily = "serif"), rot=90))
+#^ from https://statisticsglobe.com/add-subscript-and-superscript-to-plot-in-r example 3
+
+print(p)
+ggsave(here("output/pub_figs/fig_unk.png"), 
        plot = p,
        width = 5.61, 
        height = 4.22, 
