@@ -113,7 +113,9 @@ st_weights_df <- stacking_weights(lpds_Z) |>
 
 elpd_weights_table <- elpd_comp_df |>
   left_join(st_weights_df, by = "Model") |>
-  mutate(Weight = round(as.numeric(Weight), 4)) |>
+  mutate(Weight = round(as.numeric(Weight), 4), 
+         elpd_diff = round(as.numeric(elpd_diff), 2), 
+         se_diff = round(as.numeric(se_diff), 2)) |>
   arrange(desc(Weight))
 
 write.csv(elpd_weights_table, here("output/CV/elpd_weights_table.csv"))
@@ -167,12 +169,12 @@ for(i in unique(SR_data$pop)){
   pop_weights_hier <- rbind(pop_weights_hier, pop_weight_hier)
   
   #and whatever else just to check ---
-  lpds_Z_misc <- lpds[,c(1,4)] - apply(lpds[,c(1,4)],1,max)  #toggle cols around to compare other models
+  lpds_Z_misc <- lpds[,c(1,5)] - apply(lpds[,c(1,5)],1,max)  #toggle cols around to compare other models
   
   pop_weight_misc <- stacking_weights(lpds_Z_misc[rows,]) |>
     as.matrix() |>
     as.data.frame()|>
-    mutate(Model = c("m1", "m3"), 
+    mutate(Model = c("m1", "m4a"), 
            Pop = i) |>
     rename(Weight = 1)
   pop_weights_misc <- rbind(pop_weights_misc, pop_weight_misc)
@@ -183,3 +185,4 @@ for(i in unique(SR_data$pop)){
 write.csv(pop_weights, here("output/CV/pop_weights.csv"), row.names = FALSE)
 write.csv(pop_weights_hier, here("output/CV/pop_weights_hier.csv"), row.names = FALSE)
 write.csv(pop_weights_quo, here("output/CV/pop_weights_quo.csv"), row.names = FALSE)
+write.csv(pop_weights_misc, here("output/CV/pop_weights_misc.csv"), row.names = FALSE)
