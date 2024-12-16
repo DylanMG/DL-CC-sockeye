@@ -38,7 +38,7 @@ Here we estimate maximum spawners based on photosynthetic rates ($S_{Max_{PR}}$)
 
 $S_{Max_{PR}}$ estimates will ultimately be transformed and used as priors on the beta parameter in a Ricker stock-recruit model. We use empirical $S_{Max_{PR}}$ estimates from table S1 from the Atlas et al. 2020, then use modeled estimates of $S_{Max_{PR}}$ calculated here as priors. We assign error around $S_{Max_{PR}}$ based on lake clarity categories and $PR_{Mean}$ estimates shown in figure 3a of Atlas et al. 2020.  
 
-Ideally, we'd have empirical estimates of $S_{Max_{PR}}$ error that describe sampling error within lakes when calculating $PR_{Mean}$, but that doesn't exist. Atlas et al. 2020 figure S3 highlights the variability in empirical $PR_{Mean}$ by water clarity group. Since water clarity was selected in all top models in Atlas et al. 2020, and $PR_{Mean}$ estimates aren't yet scaled up to lake size, we feel using the variability in Figure 3a strikes a balance between overstepping inference and simplicity.  
+Ideally, empirical estimates of $S_{Max_{PR}}$ error that describe sampling error within lakes when calculating $PR_{Mean}$ would be available, but that doesn't exist. Atlas et al. 2020 figure S3 highlights the variability in empirical $PR_{Mean}$ by water clarity group. Since water clarity was selected in all top models in Atlas et al. 2020, and $PR_{Mean}$ estimates aren't yet scaled up to lake size, we feel using the variability in Figure 3a strikes a balance between overstepping inference and simplicity.  
 
 ## PR data  
 
