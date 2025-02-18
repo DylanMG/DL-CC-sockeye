@@ -3,7 +3,7 @@ title: "Combining hierarchical models and habitat data improves assessment of da
 subtitle:  |
     | Marine and Coastal Fisheries
     | Supplement 2: Model diagnostics and reporting full posteriors 
-author: "W.I. Atlas, D.M. Glaser, B.M. Connors, C.A. Holt, D.A. Greenberg, D.T. Selbie, S. Cox-Rogers, C. Carr-Harris, E. Hertz, and J.W. Moore."
+author: "W.I. Atlas, D.M. Glaser, B.M. Connors, C.A. Holt, D.A. Greenberg, D.T. Selbie, S. Cox-Rogers, C. Carr-Harris, E. Hertz, Jonathan L. Hart and J.W. Moore."
 knit: (function(inputFile, encoding) {
   rmarkdown::render(inputFile, encoding = encoding, output_dir = "../output/html") })
 output: 
